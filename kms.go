@@ -9,11 +9,13 @@ import (
 
 func BasicTest() {
 	wd, _ := os.Getwd()
-	os.Setenv("SOFTHSM_CONF", wd+"/softhsm.conf")
+	os.Setenv("SOFTHSM2_CONF", wd+"/softhsm2.conf")
 
-	log.Printf("Set conf to %v", os.Getenv("SOFTHSM_CONF"))
+	//os.Setenv("SOFTHSM2_CONF", "/home/keithball/Documents/softhsm/softhsm-2.0.0b2/softhsm.conf")
 
-	p := pkcs11.New("/usr/lib64/softhsm/libsofthsm.so")
+	log.Printf("Set conf to %v", os.Getenv("SOFTHSM2_CONF"))
+
+	p := pkcs11.New("/usr/lib64/pkcs11/libsofthsm2.so")
 	if p == nil {
 		panic("Failed to init lib")
 	}
@@ -25,7 +27,7 @@ func BasicTest() {
 	// What PKS11 info do we get
 	info, err := p.GetInfo()
 
-	log.Printf("Using %v %v", info.ManufacturerID, info.LibraryDescription)
+	log.Printf("Using %v %v %v.%v", info.ManufacturerID, info.LibraryDescription, info.LibraryVersion.Major, info.LibraryVersion.Minor)
 
 	defer p.Destroy()
 	defer p.Finalize()
@@ -52,7 +54,7 @@ func BasicTest() {
 		panic(fmt.Sprintf("Login() failed %s\n", err))
 	}
 
-	aesKeyTemplate := []*pkcs11.Attribute{
+	/*aesKeyTemplate := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_SECRET_KEY),
 		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_AES),
 		pkcs11.NewAttribute(pkcs11.CKA_ENCRYPT, true),
@@ -61,45 +63,56 @@ func BasicTest() {
 		pkcs11.NewAttribute(pkcs11.CKA_VERIFY, true),
 		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
 		pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, false),
-		pkcs11.NewAttribute(pkcs11.CKA_VALUE, 16),                 /* KeyLength */
-		pkcs11.NewAttribute(pkcs11.CKA_LABEL, "My First AES Key"), /* Name of Key */
+		pkcs11.NewAttribute(pkcs11.CKA_VALUE, 32),
+		pkcs11.NewAttribute(pkcs11.CKA_LABEL, "My First AES Key"),
 	}
 
 	aesKey, err := p.CreateObject(session, aesKeyTemplate)
-	//aesKey, err := p.GenerateKey(session, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_AES_KEY_GEN, nil)}, aesKeyTemplate)
 	if err != nil {
 		panic(fmt.Sprintf("GenerateKey() failed %s\n", err))
 	}
 
-	/*publicKeyTemplate := []*pkcs11.Attribute{
-		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKO_PUBLIC_KEY),
-		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
-		pkcs11.NewAttribute(pkcs11.CKA_ENCRYPT, true),
-		pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, []byte{3}),
-		pkcs11.NewAttribute(pkcs11.CKA_MODULUS_BITS, 1024),
-		pkcs11.NewAttribute(pkcs11.CKA_LABEL, "MyFirstKey"),
-	}
-	privateKeyTemplate := []*pkcs11.Attribute{
-		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKO_PRIVATE_KEY),
-		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
-		pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, true),
-		pkcs11.NewAttribute(pkcs11.CKA_SIGN, true),
-		pkcs11.NewAttribute(pkcs11.CKA_LABEL, "MyFirstKey"),
-	}
+	log.Printf("Key Created %v ", aesKey)*/
 
-	pub, _, err := p.GenerateKeyPair(session, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS_KEY_PAIR_GEN, nil)}, publicKeyTemplate, privateKeyTemplate)
-	if err != nil {
-		panic(fmt.Sprintf("GenerateKeyPair() failed %s\n", err))
-	}
-
-	log.Printf("Public Key: %v", pub)*/
-
-	// Set up encryption
-	err = p.EncryptInit(session, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_AES_CBC_PAD, nil)}, aesKey)
-	//err = p.EncryptInit(session, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS_OAEP, nil)}, pub)
+	/*keySearch := []*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_LABEL, "My First AES Key")}
+	err = p.FindObjectsInit(session, keySearch)
 	if err != nil {
 		panic(fmt.Sprintf("EncryptInit() failed %s\n", err))
 	}
+
+	obj, b, e := p.FindObjects(session, 1)
+	if e != nil {
+		panic(fmt.Sprintf("FindObjects() failed %s %v\n", err, b))
+	}
+	if e := p.FindObjectsFinal(session); e != nil {
+		panic(fmt.Sprintf("FindObjects() failed %s %v\n", err, b))
+	}
+
+	aesKey := obj[0]
+
+	template := []*pkcs11.Attribute{
+		pkcs11.NewAttribute(pkcs11.CKA_LABEL, nil),
+		pkcs11.NewAttribute(pkcs11.CKA_ENCRYPT, nil),
+		//pkcs11.NewAttribute(pkcs11.CKA_VALUE, nil),
+		//pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, nil),
+		pkcs11.NewAttribute(pkcs11.CKA_CLASS, nil),
+	}
+	// ObjectHandle two is the public key
+	attr, err := p.GetAttributeValue(session, aesKey, template)
+	if err != nil {
+		panic(fmt.Sprintf("GetAttributeValue() failed %s\n", err))
+	}
+	for i, a := range attr {
+		log.Printf("Attr %d, type %d, valuelen %d, value %v", i, a.Type, len(a.Value), string(a.Value))
+	}
+
+	// Set up encryption
+	err = p.EncryptInit(session, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_AES_CBC, nil)}, aesKey)
+	if err != nil {
+		panic(fmt.Sprintf("EncryptInit() failed %s\n", err))
+	}
+
+	log.Printf("Key Inited %v ", aesKey)
 
 	data := []byte("this is a string")
 
@@ -109,7 +122,93 @@ func BasicTest() {
 		panic(fmt.Sprintf("Encrypt() failed %s\n", err))
 	}
 
-	log.Printf("Result: %v len: %v ", encryptedData, len(encryptedData))
+	log.Printf("Result: %v len: %v ", encryptedData, len(encryptedData))*/
+
+	/*keySearch := []*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_LABEL, "MyFirstKey")}
+	err = p.FindObjectsInit(session, keySearch)
+	if err != nil {
+		panic(fmt.Sprintf("EncryptInit() failed %s\n", err))
+	}
+
+	obj, b, e := p.FindObjects(session, 1)
+	if e != nil {
+		panic(fmt.Sprintf("FindObjects() failed %s %v\n", err, b))
+	}
+	if e := p.FindObjectsFinal(session); e != nil {
+		panic(fmt.Sprintf("FindObjects() failed %s %v\n", err, b))
+	}
+
+	aesKey := obj[0]
+
+	template := []*pkcs11.Attribute{
+		pkcs11.NewAttribute(pkcs11.CKA_LABEL, nil),
+		pkcs11.NewAttribute(pkcs11.CKA_ENCRYPT, nil),
+		pkcs11.NewAttribute(pkcs11.CKA_CLASS, nil),
+	}
+	// ObjectHandle two is the public key
+	attr, err := p.GetAttributeValue(session, aesKey, template)
+	if err != nil {
+		panic(fmt.Sprintf("GetAttributeValue() failed %s\n", err))
+	}
+	for i, a := range attr {
+		log.Printf("Attr %d, type %d, valuelen %d, value %v", i, a.Type, len(a.Value), string(a.Value))
+	}*/
+
+	publicKeyTemplate := []*pkcs11.Attribute{
+		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PUBLIC_KEY),
+		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_RSA),
+		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
+		pkcs11.NewAttribute(pkcs11.CKA_ENCRYPT, true),
+		pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, []byte{3}),
+		pkcs11.NewAttribute(pkcs11.CKA_MODULUS_BITS, 4096),
+		pkcs11.NewAttribute(pkcs11.CKA_LABEL, "MyHardCoreKey"),
+	}
+	privateKeyTemplate := []*pkcs11.Attribute{
+		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PRIVATE_KEY),
+		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_RSA),
+		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
+		pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, true),
+		pkcs11.NewAttribute(pkcs11.CKA_SIGN, true),
+		pkcs11.NewAttribute(pkcs11.CKA_LABEL, "MyHardCoreKey"),
+	}
+
+	pub, priv, err := p.GenerateKeyPair(session, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS_KEY_PAIR_GEN, nil)}, publicKeyTemplate, privateKeyTemplate)
+	if err != nil {
+		panic(fmt.Sprintf("GenerateKeyPair() failed %s\n", err))
+	}
+
+	log.Printf("Public Key: %v", pub)
+
+	err = p.EncryptInit(session, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS, nil)}, pub)
+
+	if err != nil {
+		panic(fmt.Sprintf("EncryptInit() failed %s\n", err))
+	}
+
+	log.Printf("Key Inited %v ", pub)
+
+	data := []byte("this is a string")
+
+	log.Printf("Encrypt data: %v len: %v ", string(data), len(data))
+	encryptedData, err := p.Encrypt(session, data)
+	if err != nil {
+		panic(fmt.Sprintf("Encrypt() failed %s\n", err))
+	}
+
+	log.Printf("Result: %v len: %v ", string(encryptedData), len(encryptedData))
+
+	err = p.DecryptInit(session, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS, nil)}, priv)
+	if err != nil {
+		panic(fmt.Sprintf("DecryptInit() failed %s\n", err))
+	}
+
+	// Let's decrypt again
+	decryptedData, err := p.Decrypt(session, encryptedData)
+	if err != nil {
+		panic(fmt.Sprintf("Decrypt() failed %s\n", err))
+	}
+
+	log.Printf("Result: %v len: %v ", string(decryptedData), len(decryptedData))
 
 	/*p.DigestInit(session, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_SHA_1, nil)})
 	hash, _ := p.Digest(session, []byte("this is a string"))
