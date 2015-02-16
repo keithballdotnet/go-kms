@@ -23,7 +23,7 @@ type Context struct {
 	RemoteAddr string
 }
 
-// Start a HTTP listener
+// StartListener start a HTTP listener
 func StartListener() {
 
 	// Set up the auth key
@@ -98,13 +98,13 @@ func SetupAuthenticationKey() {
 
 // GenerateDataKeyRequest
 type GenerateDataKeyRequest struct {
-	KeyID string
+	KeyID string `json:"KeyID"`
 }
 
 // GenerateDataKeyResponse
 type GenerateDataKeyResponse struct {
-	Plaintext      []byte
-	CiphertextBlob []byte
+	Plaintext      []byte `json:"Plaintext"`
+	CiphertextBlob []byte `json:"CiphertextBlob"`
 }
 
 // generateDataKeyHandler will generate a new AES key for use by a client
@@ -114,12 +114,85 @@ func generateDataKeyHandler(u *url.URL, h http.Header, dataKeyRequest *GenerateD
 
 	log.Println("GenerateDataKeyRequest: Starting...")
 
+	// Authoritze the request
+	if !AuthorizeRequest("POST", u, h) {
+		return http.StatusUnauthorized, nil, nil, nil
+	}
+
 	// Create a new key
 	aesKey := GenerateAesSecret()
 
 	// Encrypt the key with the master key
+	encryptedData, err := KmsCrypto.Encrypt(aesKey, dataKeyRequest.KeyID)
+	if err != nil {
+		return http.StatusInternalServerError, nil, nil, nil
+	}
 
-	return http.StatusOK, nil, &GenerateDataKeyResponse{Plaintext: aesKey}, nil
+	return http.StatusOK, nil, &GenerateDataKeyResponse{Plaintext: aesKey, CiphertextBlob: encryptedData}, nil
+}
+
+// EncryptRequest
+type EncryptRequest struct {
+	KeyID     string `json:"KeyID"`
+	Plaintext []byte `json:"Plaintext"`
+}
+
+// EncryptResponse
+type EncryptResponse struct {
+	CiphertextBlob []byte `json:"CiphertextBlob"`
+}
+
+// encryptHandler will encrypt the passed data with the specified key
+func encryptHandler(u *url.URL, h http.Header, encryptRequest *EncryptRequest, c *Context) (int, http.Header, *EncryptResponse, error) {
+	//var err error
+	//defer CatchPanic(&err, "EncryptHandler")
+
+	log.Println("EncryptHandler: Starting...")
+
+	// Authoritze the request
+	if !AuthorizeRequest("POST", u, h) {
+		return http.StatusUnauthorized, nil, nil, nil
+	}
+
+	// Encrypt the data with the key specified and return the encrypted data
+	encryptedData, err := KmsCrypto.Encrypt(encryptRequest.Plaintext, encryptRequest.KeyID)
+	if err != nil {
+		return http.StatusInternalServerError, nil, nil, nil
+	}
+
+	return http.StatusOK, nil, &EncryptResponse{CiphertextBlob: encryptedData}, nil
+}
+
+// DecryptRequest
+type DecryptRequest struct {
+	KeyID          string `json:"KeyID"`
+	CiphertextBlob []byte `json:"CiphertextBlob"`
+}
+
+// DecryptResponse
+type DecryptResponse struct {
+	Plaintext []byte `json:"Plaintext"`
+}
+
+// decryptHandler will decrypt the passed data with the specified key
+func decryptHandler(u *url.URL, h http.Header, decryptRequest *DecryptRequest, c *Context) (int, http.Header, *DecryptResponse, error) {
+	//var err error
+	//defer CatchPanic(&err, "decryptHandler")
+
+	log.Println("DecryptHandler: Starting...")
+
+	// Authoritze the request
+	if !AuthorizeRequest("POST", u, h) {
+		return http.StatusUnauthorized, nil, nil, nil
+	}
+
+	// Decrypt
+	decryptedData, err := KmsCrypto.Decrypt(decryptRequest.CiphertextBlob, decryptRequest.KeyID)
+	if err != nil {
+		return http.StatusInternalServerError, nil, nil, nil
+	}
+
+	return http.StatusOK, nil, &DecryptResponse{Plaintext: decryptedData}, nil
 }
 
 func GetHello(u *url.URL, h http.Header, _ interface{}) (int, http.Header, string, error) {

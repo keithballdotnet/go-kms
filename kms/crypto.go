@@ -27,13 +27,13 @@ import (
 )
 
 // Path to the certificate
-var CertifcatePath = filepath.Join(os.TempDir(), "blocker", "cert.pem")
+var CertifcatePath = filepath.Join(os.TempDir(), "go-kms", "cert.pem")
 
 // Path to the private key
-var KeyPath = filepath.Join(os.TempDir(), "blocker", "key.pem")
+var KeyPath = filepath.Join(os.TempDir(), "go-kms", "key.pem")
 
 // Path to the encrypted aes key
-var aesKeyPath = filepath.Join(os.TempDir(), "blocker")
+var aesKeyPath = filepath.Join(os.TempDir(), "go-kms")
 
 var aesKeyName = "%s.key"
 
@@ -81,7 +81,7 @@ func LoadOrGenerateRsaKey() {
 // Generate a new key
 func GenerateRsaKey() {
 
-	depositoryDir := filepath.Join(os.TempDir(), "blocker")
+	depositoryDir := filepath.Join(os.TempDir(), "go-kms")
 
 	err := os.Mkdir(depositoryDir, 0777)
 	if err != nil && !os.IsExist(err) {
@@ -100,7 +100,7 @@ func GenerateRsaKey() {
 	template := x509.Certificate{
 		SerialNumber: new(big.Int).SetInt64(0),
 		Subject: pkix.Name{
-			CommonName:   "Blocker Encryption Master Key",
+			CommonName:   "Go-KMS Encryption Master Key",
 			Organization: []string{"Inflatablewoman's CA"},
 		},
 		NotBefore: now.Add(-5 * time.Minute).UTC(),
