@@ -15,8 +15,8 @@ type SoftHSMCryptoProvider struct {
 
 // NewHMSCryptoProvider
 func NewSoftHSMCryptoProvider() (SoftHSMCryptoProvider, error) {
-	// Ensure out config is ok...
-	SetConfig()
+	// Ensure our config is ok...
+	SetSoftHSMCryptoConfig()
 
 	os.Setenv("SOFTHSM2_CONF", Config["SOFTHSM2_CONF"])
 
@@ -68,7 +68,7 @@ func NewSoftHSMCryptoProvider() (SoftHSMCryptoProvider, error) {
 }
 
 // SetConfig will check any required settings for this crypto-provider
-func SetConfig() {
+func SetSoftHSMCryptoConfig() {
 	envFiles := []string{"SOFTHSM2_CONF", "GOKMS_HSM_LIB"}
 
 	providerConfig := map[string]string{

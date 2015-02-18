@@ -25,10 +25,12 @@ func (s *KMSSuite) SetUpSuite(c *C) {
 
 	os.Setenv("GOKMS_HSM_SLOT_PASSWORD", "1234")
 
+	os.Setenv("GOKMS_KSMC_PASSPHRASE", "A long passphrase that will be used to generate the master key")
+
 	InitConfig()
 
 	// Create provider
-	KmsCrypto, _ = NewSoftHSMCryptoProvider()
+	KmsCrypto, _ = NewKMSCryptoProvider()
 
 	// Shared Key
 	SharedKey = "e7yflbeeid26rredmwtbiyzxijzak6altcnrsi4yol2f5sexbgdwevlpgosfoeyy"
@@ -125,6 +127,22 @@ func (s *KMSSuite) TestHMSEncryptDecrypt(c *C) {
 	c.Assert(bytes.Equal(data, decryptedData), IsTrue)
 }
 
+func (s *KMSSuite) TestGenerateKeyFromPassphrase(c *C) {
+
+	salt := []byte{} //GetSalt(8)
+
+	aesKey := DeriveAESKey("ThisIsAGreatPassphrase", salt)
+
+	fmt.Println("Aes Key from passphrase: " + string(aesKey))
+
+	aesKey2 := DeriveAESKey("ThisIsAGreatPassphrase", salt)
+
+	fmt.Println("Aes Key 2 from passphrase: " + string(aesKey2))
+
+	c.Assert(bytes.Equal(aesKey, aesKey2), IsTrue)
+
+}
+
 func (s *KMSSuite) TestAesCrypto(c *C) {
 
 	encryptString := "a very very very very secret pot"
@@ -133,7 +151,9 @@ func (s *KMSSuite) TestAesCrypto(c *C) {
 
 	fmt.Println("bytes to encrypt: " + string(bytesToEncrypt))
 
-	encryptedBytes, err := AesCfbEncrypt(bytesToEncrypt, "testhash")
+	aesKey := GenerateAesSecret()
+
+	encryptedBytes, err := AesEncrypt(bytesToEncrypt, aesKey)
 
 	if err != nil {
 		fmt.Println("Got error: " + err.Error())
@@ -144,7 +164,7 @@ func (s *KMSSuite) TestAesCrypto(c *C) {
 
 	fmt.Println("encrypted bytes: " + string(encryptedBytes))
 
-	unencryptedBytes, err := AesCfbDecrypt(encryptedBytes, "testhash")
+	unencryptedBytes, err := AesDecrypt(encryptedBytes, aesKey)
 
 	if err != nil {
 		fmt.Println("Got error: " + err.Error())

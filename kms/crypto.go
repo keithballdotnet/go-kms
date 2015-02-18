@@ -1,11 +1,13 @@
 package kms
 
 import (
+	"code.google.com/p/go.crypto/pbkdf2"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -159,45 +161,6 @@ func GenerateAesSecret() []byte {
 	return key
 }
 
-// DeleteAesSecret - Remove a key if not needed
-func DeleteAesSecret(hash string) {
-	os.Remove(GetAesSecretPath(hash))
-}
-
-// Get the AES secret to be used for encryption
-func GetAesSecret(hash string) (AesKey, error) {
-	// Read key
-	keyBytes, err := ioutil.ReadFile(GetAesSecretPath(hash))
-	if err == nil {
-		key, _ := RsaDecrypt(keyBytes)
-		return AesKey{key}, nil
-	}
-
-	// Create new Aes Secret
-	newAesKey := GenerateAesSecret()
-
-	// Encrypt the key for later use
-	encryptedKey, err := RsaEncrypt(newAesKey)
-	if err != nil {
-		log.Println(fmt.Sprintf("Error writing file : %v", err))
-		return AesKey{}, err
-	}
-
-	// Save encrypted key to disk
-	err = ioutil.WriteFile(GetAesSecretPath(hash), encryptedKey, 0644)
-	if err != nil {
-		log.Println(fmt.Sprintf("Error writing file : %v", err))
-		return AesKey{}, err
-	}
-
-	return AesKey{newAesKey}, nil
-}
-
-// GetAesSecretPath - Will return a key name for a hash
-func GetAesSecretPath(hash string) string {
-	return filepath.Join(aesKeyPath, fmt.Sprintf(aesKeyName, hash))
-}
-
 // Hex to bytes
 func hex2Bytes(hexStr string) ([]byte, error) {
 	return hex.DecodeString(hexStr)
@@ -206,17 +169,6 @@ func hex2Bytes(hexStr string) ([]byte, error) {
 // Bytes to hex
 func encodeHex(bytes []byte) string {
 	return fmt.Sprintf("%x", bytes)
-}
-
-// Encrpyt data using AES with the CFB chipher mode
-func AesCfbDecrypt(encryptedBytes []byte, hash string) ([]byte, error) {
-	// Get the key for this hash
-	aesEncryptionKey, err := GetAesSecret(hash)
-	if err != nil {
-		return nil, err
-	}
-
-	return AesDecrypt(encryptedBytes, aesEncryptionKey.key)
 }
 
 // Encrpyt data using AES with the CFB chipher mode
@@ -239,21 +191,8 @@ func AesDecrypt(encryptedBytes []byte, key []byte) ([]byte, error) {
 
 	// XORKeyStream can work in-place if the two arguments are the same.
 	stream.XORKeyStream(encryptedBytes, encryptedBytes)
-	// fmt.Printf("%s", ciphertext)
-	// Output: some plaintext
 
 	return encryptedBytes, nil
-}
-
-// Encrpyt data using AES with the CFB chipher mode
-func AesCfbEncrypt(bytesToEncrypt []byte, hash string) ([]byte, error) {
-	// key := []byte("a very very very very secret key") // 32 bytes
-	aesEncryptionKey, err := GetAesSecret(hash)
-	if err != nil {
-		return nil, err
-	}
-
-	return AesEncrypt(bytesToEncrypt, aesEncryptionKey.key)
 }
 
 // Encrpyt data using AES with the CFB chipher mode
@@ -289,6 +228,12 @@ func GetHmac256(message string, secret string) string {
 	return base64.StdEncoding.EncodeToString(h.Sum(nil))
 }
 
+// DeriveKey will generate a AES key from a passphrase
+func DeriveAESKey(passphrase string, salt []byte) []byte {
+	// Create key
+	return pbkdf2.Key([]byte(passphrase), salt, 4096, 32, sha1.New)
+}
+
 // Get a random number
 func GetRandomInt(min, max int) int {
 
@@ -300,6 +245,17 @@ func GetRandomInt(min, max int) int {
 
 	// Now get a number from the range desired
 	return mathrand.Intn(max-min) + min
+}
+
+// GetSalt of a particular length
+func GetSalt(length int) []byte {
+	// Get a random salt
+	salt := make([]byte, length)
+	if _, err := io.ReadFull(rand.Reader, salt); err != nil {
+		return nil
+	}
+
+	return salt
 }
 
 // Generate a Random secret encoded as a b32 string
