@@ -57,7 +57,50 @@ func SetAuth(request *http.Request, method string, resource string) *http.Reques
 	return request
 }
 
+func (s *KMSSuite) TestCreateKeyThenGetKeyListKeysAndCheckKeyIsThere(c *C) {
+	desc := "A new key description!"
+
+	keyMetadata, err := KmsCrypto.CreateKey(desc)
+
+	// No error
+	c.Assert(err == nil, IsTrue, Commentf("Got error: %v", err))
+
+	c.Assert(desc == keyMetadata.Description, IsTrue)
+	c.Assert(keyMetadata.Enabled, IsTrue)
+	c.Assert(keyMetadata.KeyID != "", IsTrue)
+
+	key, err := KmsCrypto.GetKey(keyMetadata.KeyID)
+
+	// No error
+	c.Assert(err == nil, IsTrue, Commentf("Got error: %v", err))
+
+	// Ensure key is 32 bytes
+	c.Assert(len(key.AESKey) == 32, IsTrue)
+
+	c.Assert(key.KeyMetadata.Description == desc, IsTrue)
+
+	c.Assert(key.KeyMetadata.Enabled, IsTrue)
+
+	keyList, err := KmsCrypto.ListKeys()
+
+	// No error
+	c.Assert(err == nil, IsTrue, Commentf("Got error: %v", err))
+
+	keyFoundInList := false
+
+	for _, k := range keyList {
+		if k.KeyID == keyMetadata.KeyID {
+			keyFoundInList = true
+			break
+		}
+	}
+
+	c.Assert(keyFoundInList, IsTrue)
+}
+
 func (s *KMSSuite) TestGenerateDataKeyAndDecrypt(c *C) {
+
+	c.Skip("Skip until list implemented")
 
 	u := url.URL{Path: "/api/v1/go-kms/generatedatakey"}
 
@@ -108,6 +151,8 @@ func (s *KMSSuite) TestGenerateDataKeyAndDecrypt(c *C) {
 }
 
 func (s *KMSSuite) TestHMSEncryptDecrypt(c *C) {
+
+	c.Skip("No HSM test")
 
 	data := GenerateAesSecret()
 

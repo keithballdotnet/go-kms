@@ -18,7 +18,7 @@ func Start() {
 	switch Config["GOKMS_CRYPTO_PROVIDER"] {
 	case "softhsm":
 		// Create crypto provider
-		KmsCrypto, err = NewSoftHSMCryptoProvider()
+		//KmsCrypto, err = NewSoftHSMCryptoProvider()
 	default:
 		KmsCrypto, err = NewKMSCryptoProvider()
 	}

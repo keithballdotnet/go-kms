@@ -1,7 +1,13 @@
 package kms
 
 import (
+	"code.google.com/p/go-uuid/uuid"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io/ioutil"
+	"strings"
+	"time"
 	// "io/ioutil"
 	"log"
 	"os"
@@ -27,7 +33,7 @@ func NewKMSCryptoProvider() (KMSCryptoProvider, error) {
 	_, err := os.Stat(Config["GOKMS_KSMC_PATH"])
 	if err != nil {
 		// Ensure key path exists
-		err := os.Mkdir(Config["GOKMS_KSMC_PATH"], 0777)
+		err := os.Mkdir(Config["GOKMS_KSMC_PATH"], 0600)
 		if err != nil && !os.IsExist(err) {
 			Exit(fmt.Sprintf("Can't use directory %s: %v", Config["GOKMS_KSMC_PATH"], err), 2)
 		}
@@ -39,9 +45,9 @@ func NewKMSCryptoProvider() (KMSCryptoProvider, error) {
 	}
 
 	// Derive master key from given pass phrase
-	aesKey := DeriveAESKey(Config["GOKMS_KSMC_PASSPHRASE"], []byte{})
+	userKey := DeriveAESKey(Config["GOKMS_KSMC_PASSPHRASE"], []byte{})
 
-	return KMSCryptoProvider{userkey: aesKey}, nil
+	return KMSCryptoProvider{userkey: userKey}, nil
 }
 
 // SetKMSCryptoConfig will check any required settings for this crypto-provider
@@ -82,36 +88,120 @@ func SetKMSCryptoConfig() {
 	return
 }
 
-// FindKey from the the HMS store
-func (cp KMSCryptoProvider) FindKey(KeyID string) ([]byte, error) {
+// ListKeys will list the available keys
+func (cp KMSCryptoProvider) ListKeys() ([]KeyMetadata, error) {
 
-	// User the master key for all encryption now.
-	return cp.userkey, nil
+	// Create slice of metadata to return
+	metadata := make([]KeyMetadata, 0)
+
+	files, _ := ioutil.ReadDir(Config["GOKMS_KSMC_PATH"])
+	for _, f := range files {
+		if !f.IsDir() && strings.HasSuffix(f.Name(), ".key") {
+			keyID := strings.TrimSuffix(f.Name(), ".key")
+			key, err := cp.GetKey(keyID)
+			if err != nil {
+				log.Printf("ListKeys() got problem getting key %s: %v\n", keyID, err)
+			} else {
+				metadata = append(metadata, key.KeyMetadata)
+			}
+		}
+	}
+
+	return metadata, nil
+}
+
+// CreateKey will create a new key
+func (cp KMSCryptoProvider) CreateKey(description string) (KeyMetadata, error) {
+
+	// Create a new key id
+	keyID := uuid.New()
+
+	// Create metadata
+	keyMetadata := KeyMetadata{
+		KeyID:        keyID,
+		Description:  description,
+		CreationDate: time.Now().UTC(),
+		Enabled:      true,
+	}
+
+	// Create a new secret key
+	aesKey := GenerateAesSecret()
+
+	// Create new key object
+	key := Key{KeyMetadata: keyMetadata, AESKey: aesKey}
+
+	// JSON -> byte
+	keyData, err := json.Marshal(key)
+	if err != nil {
+		log.Printf("CreateKey() failed %s\n", err)
+		return KeyMetadata{}, err
+	}
 
 	// Create path to key
-	/*keyPath := filepath.Join(Config["GOKMS_KSMC_PATH"], KeyID, ".key")
+	keyPath := filepath.Join(Config["GOKMS_KSMC_PATH"], keyID+".key")
+
+	// Encrypt the key data with the user key and perist to disk..
+	encryptedKey, err := AesEncrypt(keyData, cp.userkey)
+	if err != nil {
+		log.Printf("CreateKey() failed %s\n", err)
+		return KeyMetadata{}, err
+	}
+
+	// Store key on disk
+	err = ioutil.WriteFile(keyPath, encryptedKey, 0600)
+	if err != nil {
+		log.Printf("CreateKey() failed %s\n", err)
+		return KeyMetadata{}, err
+	}
+
+	return keyMetadata, nil
+}
+
+// GetKey from the the store
+func (cp KMSCryptoProvider) GetKey(KeyID string) (Key, error) {
+
+	// Create path to key
+	keyPath := filepath.Join(Config["GOKMS_KSMC_PATH"], KeyID+".key")
 
 	// Read encrypted key from disk
 	encryptedKey, err := ioutil.ReadFile(keyPath)
 	if err != nil {
-		log.Printf("FindKey() failed %s\n", err)
-		return nil, err
+		log.Printf("GetKey() failed %s\n", err)
+		return Key{}, err
 	}
 
-	// decrypt the key with the users derived key
-	return AesDecrypt(encryptedKey, cp.userkey)*/
+	// decrypt the data on disk with the users derived key
+	decryptedData, err := AesDecrypt(encryptedKey, cp.userkey)
+	if err != nil {
+		log.Printf("GetKey() failed %s\n", err)
+		return Key{}, err
+	}
+
+	var key Key
+	err = json.Unmarshal(decryptedData, &key)
+	if err != nil {
+		log.Printf("GetKey() failed %s\n", err)
+		return Key{}, err
+	}
+
+	return key, nil
 }
 
 // Encrypt will encrypt the data using the HSM
 func (cp KMSCryptoProvider) Encrypt(data []byte, KeyID string) ([]byte, error) {
 
-	key, err := cp.FindKey(KeyID)
+	key, err := cp.GetKey(KeyID)
 	if err != nil {
 		log.Printf("Encrypt - FindKey() failed %s\n", err)
 		return nil, err
 	}
 
-	encryptedData, err := AesEncrypt(data, key)
+	// Check to see if key is enabled
+	if !key.KeyMetadata.Enabled {
+		return nil, errors.New("Key is not enabled!")
+	}
+
+	encryptedData, err := AesEncrypt(data, key.AESKey)
 	if err != nil {
 		log.Printf("Encrypt - AesEncrypt() failed %s\n", err)
 		return nil, err
@@ -125,14 +215,19 @@ func (cp KMSCryptoProvider) Encrypt(data []byte, KeyID string) ([]byte, error) {
 // Decrypt will decrypt the data using the HSM
 func (cp KMSCryptoProvider) Decrypt(data []byte, KeyID string) ([]byte, error) {
 
-	key, err := cp.FindKey(KeyID)
+	key, err := cp.GetKey(KeyID)
 	if err != nil {
 		log.Printf("FindKey() failed %s\n", err)
 		return nil, err
 	}
 
+	// Check to see if key is enabled
+	if !key.KeyMetadata.Enabled {
+		return nil, errors.New("Key is not enabled!")
+	}
+
 	// Let's decrypt again
-	decryptedData, err := AesDecrypt(data, key)
+	decryptedData, err := AesDecrypt(data, key.AESKey)
 	if err != nil {
 		log.Printf("Decrypt() failed %s\n", err)
 		return nil, err
