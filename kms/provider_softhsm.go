@@ -7,17 +7,16 @@ import (
 	"os"
 )
 
-// Remove this...
-var keyHandle pkcs11.ObjectHandle
-
 // NewHMSCryptoProvider is an implementation of encryption using a connection to a Hardware Security Module
-type HSMCryptoProvider struct {
+type SoftHSMCryptoProvider struct {
 	p       *pkcs11.Ctx
 	session pkcs11.SessionHandle
 }
 
 // NewHMSCryptoProvider
-func NewHSMCryptoProvider() (HSMCryptoProvider, error) {
+func NewSoftHSMCryptoProvider() (SoftHSMCryptoProvider, error) {
+	// Ensure out config is ok...
+	SetConfig()
 
 	os.Setenv("SOFTHSM2_CONF", Config["SOFTHSM2_CONF"])
 
@@ -65,11 +64,51 @@ func NewHSMCryptoProvider() (HSMCryptoProvider, error) {
 	//defer p.Logout(session)
 	//defer p.CloseSession(session)
 
-	return HSMCryptoProvider{p: p, session: session}, nil
+	return SoftHSMCryptoProvider{p: p, session: session}, nil
+}
+
+// SetConfig will check any required settings for this crypto-provider
+func SetConfig() {
+	envFiles := []string{"SOFTHSM2_CONF", "GOKMS_HSM_LIB"}
+
+	providerConfig := map[string]string{
+		"GOKMS_HSM_LIB":           "/usr/lib64/pkcs11/libsofthsm2.so",
+		"GOKMS_HSM_SLOT":          "0",
+		"GOKMS_HSM_SLOT_PASSWORD": "",
+		"SOFTHSM2_CONF":           "/home/keithball/Documents/go-kms/src/github.com/Inflatablewoman/go-kms/files/softhsm2.conf",
+	}
+
+	// Load all Environments variables
+	for k, _ := range providerConfig {
+
+		// Set default value...
+		Config[k] = providerConfig[k]
+
+		// Set env setting
+		if os.Getenv(k) != "" {
+			Config[k] = os.Getenv(k)
+		}
+	}
+	// All variable MUST have a value but we can not verify the variable content
+	for k, _ := range providerConfig {
+		if Config[k] == "" {
+			Exit(fmt.Sprintf("Problem with %s", k), 2)
+		}
+	}
+
+	// Check file exists
+	for _, v := range envFiles {
+		_, err := os.Stat(Config[v])
+		if err != nil {
+			Exit(fmt.Sprintf("%s %s", v, err.Error()), 2)
+		}
+	}
+
+	return
 }
 
 // FindKey from the the HMS store
-func (cp HSMCryptoProvider) FindKey(KeyID string) (pkcs11.ObjectHandle, error) {
+func (cp SoftHSMCryptoProvider) FindKey(KeyID string) (pkcs11.ObjectHandle, error) {
 
 	// Create search index
 	keySearch := []*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_LABEL, KeyID)}
@@ -94,7 +133,7 @@ func (cp HSMCryptoProvider) FindKey(KeyID string) (pkcs11.ObjectHandle, error) {
 }
 
 // Encrypt will encrypt the data using the HSM
-func (cp HSMCryptoProvider) Encrypt(data []byte, KeyID string) ([]byte, error) {
+func (cp SoftHSMCryptoProvider) Encrypt(data []byte, KeyID string) ([]byte, error) {
 
 	pub, err := cp.FindKey("Blocker_RSA4096_PubKey")
 	if err != nil {
@@ -125,7 +164,7 @@ func (cp HSMCryptoProvider) Encrypt(data []byte, KeyID string) ([]byte, error) {
 }
 
 // Decrypt will decrypt the data using the HSM
-func (cp HSMCryptoProvider) Decrypt(data []byte, KeyID string) ([]byte, error) {
+func (cp SoftHSMCryptoProvider) Decrypt(data []byte, KeyID string) ([]byte, error) {
 
 	priv, err := cp.FindKey("Blocker_RSA4096_PrivKey")
 	if err != nil {
@@ -196,7 +235,30 @@ if err != nil {
 	panic(fmt.Sprintf("Login() failed %s\n", err))
 }
 
-/*aesKeyTemplate := []*pkcs11.Attribute{
+/*mechanisms, err := p.GetMechanismList(slots[0])
+if err != nil {
+	panic(fmt.Sprintf("GetMechanismList() failed %s\n", err))
+}
+for i, m := range mechanisms {
+	log.Printf("Mechanism %d, ID %d, Param %d", i, m.Mechanism, m.Parameter)
+}
+
+tokenInfo, err := p.GetTokenInfo(slots[0])
+if err != nil {
+	panic(fmt.Sprintf("GetTokenInfo() failed %s\n", err))
+}
+
+log.Printf("Token Info.Label: %v ", tokenInfo.Label)
+log.Printf("Token Info.FirmwareVersion: %v ", tokenInfo.FirmwareVersion)
+log.Printf("Token Info.ManufacturerID: %v ", tokenInfo.ManufacturerID)
+log.Printf("Token Info.SerialNumber: %v ", tokenInfo.SerialNumber)
+log.Printf("Token Info.MaxPinLen: %v ", tokenInfo.MaxPinLen)
+log.Printf("Token Info.Model: %v ", tokenInfo.Model)
+log.Printf("Token Info.MinPinLen: %v ", tokenInfo.MinPinLen)
+log.Printf("Token Info.HardwareVersion: %v ", tokenInfo.HardwareVersion)
+log.Printf("Token Info.MaxSessionCount: %v ", tokenInfo.MaxSessionCount)* /
+
+aesKeyTemplate := []*pkcs11.Attribute{
 	pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_SECRET_KEY),
 	pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_AES),
 	pkcs11.NewAttribute(pkcs11.CKA_ENCRYPT, true),
@@ -206,7 +268,7 @@ if err != nil {
 	pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
 	pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, false),
 	pkcs11.NewAttribute(pkcs11.CKA_VALUE, 32),
-	pkcs11.NewAttribute(pkcs11.CKA_LABEL, "My First AES Key"),
+	pkcs11.NewAttribute(pkcs11.CKA_LABEL, "AES Encryption Key"),
 }
 
 aesKey, err := p.CreateObject(session, aesKeyTemplate)
@@ -214,42 +276,14 @@ if err != nil {
 	panic(fmt.Sprintf("GenerateKey() failed %s\n", err))
 }
 
-log.Printf("Key Created %v ", aesKey)*/
+log.Printf("Key Created %v ", aesKey)
 
-/*keySearch := []*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_LABEL, "My First AES Key")}
-err = p.FindObjectsInit(session, keySearch)
-if err != nil {
-	panic(fmt.Sprintf("EncryptInit() failed %s\n", err))
-}
+//iv := make([]byte, 16)
 
-obj, b, e := p.FindObjects(session, 1)
-if e != nil {
-	panic(fmt.Sprintf("FindObjects() failed %s %v\n", err, b))
-}
-if e := p.FindObjectsFinal(session); e != nil {
-	panic(fmt.Sprintf("FindObjects() failed %s %v\n", err, b))
-}
-
-aesKey := obj[0]
-
-search := []*pkcs11.Attribute{
-	pkcs11.NewAttribute(pkcs11.CKA_LABEL, nil),
-	pkcs11.NewAttribute(pkcs11.CKA_ENCRYPT, nil),
-	//pkcs11.NewAttribute(pkcs11.CKA_VALUE, nil),
-	//pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, nil),
-	pkcs11.NewAttribute(pkcs11.CKA_CLASS, nil),
-}
-// ObjectHandle two is the public key
-attr, err := p.GetAttributeValue(session, aesKey, search)
-if err != nil {
-	panic(fmt.Sprintf("GetAttributeValue() failed %s\n", err))
-}
-for i, a := range attr {
-	log.Printf("Attr %d, type %d, valuelen %d, value %v", i, a.Type, len(a.Value), string(a.Value))
-}
+iv := []byte("01020304050607081122334455667788")
 
 // Set up encryption
-err = p.EncryptInit(session, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_AES_CBC, nil)}, aesKey)
+err = p.EncryptInit(session, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_AES_CBC, iv)}, aesKey)
 if err != nil {
 	panic(fmt.Sprintf("EncryptInit() failed %s\n", err))
 }
@@ -264,7 +298,57 @@ if err != nil {
 	panic(fmt.Sprintf("Encrypt() failed %s\n", err))
 }
 
-log.Printf("Result: %v len: %v ", encryptedData, len(encryptedData))*/
+log.Printf("Result: %v len: %v ", encryptedData, len(encryptedData))
+
+/*keySearch := []*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_LABEL, "My First AES Key")}
+  err = p.FindObjectsInit(session, keySearch)
+  if err != nil {
+  	panic(fmt.Sprintf("EncryptInit() failed %s\n", err))
+  }
+
+  obj, b, e := p.FindObjects(session, 1)
+  if e != nil {
+  	panic(fmt.Sprintf("FindObjects() failed %s %v\n", err, b))
+  }
+  if e := p.FindObjectsFinal(session); e != nil {
+  	panic(fmt.Sprintf("FindObjects() failed %s %v\n", err, b))
+  }
+
+  aesKey := obj[0]
+
+  search := []*pkcs11.Attribute{
+  	pkcs11.NewAttribute(pkcs11.CKA_LABEL, nil),
+  	pkcs11.NewAttribute(pkcs11.CKA_ENCRYPT, nil),
+  	//pkcs11.NewAttribute(pkcs11.CKA_VALUE, nil),
+  	//pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, nil),
+  	pkcs11.NewAttribute(pkcs11.CKA_CLASS, nil),
+  }
+  // ObjectHandle two is the public key
+  attr, err := p.GetAttributeValue(session, aesKey, search)
+  if err != nil {
+  	panic(fmt.Sprintf("GetAttributeValue() failed %s\n", err))
+  }
+  for i, a := range attr {
+  	log.Printf("Attr %d, type %d, valuelen %d, value %v", i, a.Type, len(a.Value), string(a.Value))
+  }
+
+  // Set up encryption
+  err = p.EncryptInit(session, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_AES_CBC, nil)}, aesKey)
+  if err != nil {
+  	panic(fmt.Sprintf("EncryptInit() failed %s\n", err))
+  }
+
+  log.Printf("Key Inited %v ", aesKey)
+
+  data := []byte("this is a string")
+
+  log.Printf("Encrypt data: %v len: %v ", data, len(data))
+  encryptedData, err := p.Encrypt(session, data)
+  if err != nil {
+  	panic(fmt.Sprintf("Encrypt() failed %s\n", err))
+  }
+
+  log.Printf("Result: %v len: %v ", encryptedData, len(encryptedData))*/
 
 /*keySearch := []*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_LABEL, "MyFirstKey")}
 	err = p.FindObjectsInit(session, keySearch)

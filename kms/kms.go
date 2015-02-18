@@ -16,7 +16,7 @@ func Start() {
 	InitConfig()
 
 	// Create crypto provider
-	KmsCrypto, err = NewHSMCryptoProvider()
+	KmsCrypto, err = NewSoftHSMCryptoProvider()
 	if err != nil {
 		Exit(fmt.Sprintf("Problem creating crypto provider: %v", err), 2)
 	}
@@ -26,22 +26,17 @@ func Start() {
 }
 
 var Config = map[string]string{
-	"GOKMS_AUTH_KEY":          "../files/auth.key",
-	"GOKMS_CRYPTO_PROVIDER":   "softhsm2",
-	"GOKMS_HOST":              "localhost",
-	"GOKMS_PORT":              "8011",
-	"GOKMS_SSL_CERT":          "../files/ssl_cert.pem",
-	"GOKMS_SSL_KEY":           "../files/ssl_key.pem",
-	"GOKMS_HSM_LIB":           "/usr/lib64/pkcs11/libsofthsm2.so",
-	"GOKMS_HSM_SLOT":          "0",
-	"GOKMS_HSM_SLOT_PASSWORD": "",
-	"GOKMS_HSM_KEY_LABEL":     "",
-	"SOFTHSM2_CONF":           "/home/keithball/Documents/go-kms/src/github.com/Inflatablewoman/go-kms/files/softhsm2.conf",
+	"GOKMS_AUTH_KEY":        "../files/auth.key",
+	"GOKMS_CRYPTO_PROVIDER": "softhsm",
+	"GOKMS_HOST":            "localhost",
+	"GOKMS_PORT":            "8011",
+	"GOKMS_SSL_CERT":        "../files/ssl_cert.pem",
+	"GOKMS_SSL_KEY":         "../files/ssl_key.pem",
 }
 
 // InitConfig read several Environment variables and based on them initialise the configuration
 func InitConfig() {
-	envFiles := []string{"SOFTHSM2_CONF", "GOKMS_HSM_LIB", "GOKMS_SSL_CERT", "GOKMS_SSL_KEY"}
+	envFiles := []string{"GOKMS_SSL_CERT", "GOKMS_SSL_KEY"}
 
 	// Load all Environments variables
 	for k, _ := range Config {

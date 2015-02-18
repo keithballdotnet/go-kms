@@ -50,9 +50,12 @@ softhsm2-util --show-slots
 
 ### PKCS#11
 https://github.com/miekg/pkcs11
+
 http://www-01.ibm.com/support/knowledgecenter/linuxonibm/com.ibm.linux.z.lxce/lxce_linklib_object_samples.html
 
 ### HMS
 https://www.opendnssec.org/
+SofthHsm2 only supports RSA encryption: https://wiki.opendnssec.org/display/SoftHSM/v2+Requirements
+
 https://wiki.opendnssec.org/display/SoftHSMDOCS/SoftHSM+Documentation+v2.0
 http://docs.oracle.com/javase/7/docs/technotes/guides/security/p11guide.html

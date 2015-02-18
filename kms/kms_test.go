@@ -22,13 +22,13 @@ type KMSSuite struct {
 var _ = Suite(&KMSSuite{})
 
 func (s *KMSSuite) SetUpSuite(c *C) {
+
 	os.Setenv("GOKMS_HSM_SLOT_PASSWORD", "1234")
-	os.Setenv("GOKMS_HSM_KEY_LABEL", "Kms Test Key")
 
 	InitConfig()
 
 	// Create provider
-	KmsCrypto, _ = NewHSMCryptoProvider()
+	KmsCrypto, _ = NewSoftHSMCryptoProvider()
 
 	// Shared Key
 	SharedKey = "e7yflbeeid26rredmwtbiyzxijzak6altcnrsi4yol2f5sexbgdwevlpgosfoeyy"
@@ -55,7 +55,7 @@ func SetAuth(request *http.Request, method string, resource string) *http.Reques
 	return request
 }
 
-func (s *KMSSuite) TestGenerateDataKey(c *C) {
+func (s *KMSSuite) TestGenerateDataKeyAndDecrypt(c *C) {
 
 	u := url.URL{Path: "/api/v1/go-kms/generatedatakey"}
 
@@ -82,7 +82,10 @@ func (s *KMSSuite) TestGenerateDataKey(c *C) {
 	// Ensure the data is different
 	c.Assert(bytes.Equal(dataKeyResponse.Plaintext, dataKeyResponse.CiphertextBlob), IsFalse)
 
-	u.Path = "/api/v1/go-kms/decrypt"
+	u = url.URL{Path: "/api/v1/go-kms/decrypt"}
+
+	r = http.Request{Header: http.Header{"accept": {"application/json"}}}
+
 	request = SetAuth(&r, "POST", u.Path)
 
 	decryptRequest := DecryptRequest{CiphertextBlob: dataKeyResponse.CiphertextBlob, KeyID: "Blocker_RSA4096_PrivKey"}
