@@ -32,11 +32,7 @@ func NewKMSCryptoProvider() (KMSCryptoProvider, error) {
 	// Check path
 	_, err := os.Stat(Config["GOKMS_KSMC_PATH"])
 	if err != nil {
-		// Ensure key path exists
-		err := os.Mkdir(Config["GOKMS_KSMC_PATH"], 0600)
-		if err != nil && !os.IsExist(err) {
-			Exit(fmt.Sprintf("Can't use directory %s: %v", Config["GOKMS_KSMC_PATH"], err), 2)
-		}
+		Exit(fmt.Sprintf("Can't use directory %s: %v", Config["GOKMS_KSMC_PATH"], err), 2)
 	}
 
 	// Derive key from pass phrase
@@ -55,7 +51,7 @@ func SetKMSCryptoConfig() {
 	envFiles := []string{}
 
 	providerConfig := map[string]string{
-		"GOKMS_KSMC_PATH":       filepath.Join(os.TempDir(), "go-kms"),
+		"GOKMS_KSMC_PATH":       filepath.Join(os.TempDir(), "go-kms", "keys"),
 		"GOKMS_KSMC_PASSPHRASE": "",
 	}
 

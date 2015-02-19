@@ -98,18 +98,66 @@ func (s *KMSSuite) TestCreateKeyThenGetKeyListKeysAndCheckKeyIsThere(c *C) {
 	c.Assert(keyFoundInList, IsTrue)
 }
 
-func (s *KMSSuite) TestGenerateDataKeyAndDecrypt(c *C) {
+func (s *KMSSuite) TestRESTInterfaceFunctions(c *C) {
 
-	c.Skip("Skip until list implemented")
+	// Create temporary store for keys during test
+	Config["GOKMS_KSMC_PATH"] = c.MkDir()
 
-	u := url.URL{Path: "/api/v1/go-kms/generatedatakey"}
+	context := Context{UserAgent: "KMS Test Agent"}
 
+	u := url.URL{Path: "/api/v1/go-kms/createkey"}
 	r := http.Request{Header: http.Header{"accept": {"application/json"}}}
-
 	request := SetAuth(&r, "POST", u.Path)
-	context := Context{UserAgent: "Test"}
 
-	dataKeyRequest := GenerateDataKeyRequest{KeyID: "Blocker_RSA4096_PubKey"}
+	description := "Test Encryption Key"
+
+	createKeyRequest := CreateKeyRequest{Description: description}
+
+	status, _, createKeyResponse, err := createKeyHandler(&u, request.Header, &createKeyRequest, &context)
+
+	// No error
+	c.Assert(err == nil, IsTrue, Commentf("Got error: %v", err))
+
+	// Status
+	c.Assert(status == http.StatusOK, IsTrue, Commentf("Incorrect return status: wanted %v got %v", http.StatusOK, status))
+
+	// Ensure the key is enabled
+	c.Assert(createKeyResponse.KeyMetadata.Enabled, IsTrue)
+
+	// Check the description is correct
+	c.Assert(createKeyResponse.KeyMetadata.Description == description, IsTrue)
+
+	u = url.URL{Path: "/api/v1/go-kms/listkeys"}
+	r = http.Request{Header: http.Header{"accept": {"application/json"}}}
+	request = SetAuth(&r, "POST", u.Path)
+
+	listKeysRequest := ListKeysRequest{}
+
+	status, _, listKeysResponse, err := listKeysHandler(&u, request.Header, &listKeysRequest, &context)
+
+	// No error
+	c.Assert(err == nil, IsTrue, Commentf("Got error: %v", err))
+
+	// Status
+	c.Assert(status == http.StatusOK, IsTrue, Commentf("Incorrect return status: wanted %v got %v", http.StatusOK, status))
+
+	// Assert the key is listed
+	keyFoundInList := false
+
+	for _, k := range listKeysResponse.KeyMetadata {
+		if k.KeyID == createKeyResponse.KeyMetadata.KeyID {
+			keyFoundInList = true
+			break
+		}
+	}
+
+	c.Assert(keyFoundInList, IsTrue)
+
+	u = url.URL{Path: "/api/v1/go-kms/generatedatakey"}
+	r = http.Request{Header: http.Header{"accept": {"application/json"}}}
+	request = SetAuth(&r, "POST", u.Path)
+
+	dataKeyRequest := GenerateDataKeyRequest{KeyID: createKeyResponse.KeyMetadata.KeyID}
 
 	status, _, dataKeyResponse, err := generateDataKeyHandler(&u, request.Header, &dataKeyRequest, &context)
 
@@ -133,7 +181,7 @@ func (s *KMSSuite) TestGenerateDataKeyAndDecrypt(c *C) {
 
 	request = SetAuth(&r, "POST", u.Path)
 
-	decryptRequest := DecryptRequest{CiphertextBlob: dataKeyResponse.CiphertextBlob, KeyID: "Blocker_RSA4096_PrivKey"}
+	decryptRequest := DecryptRequest{CiphertextBlob: dataKeyResponse.CiphertextBlob, KeyID: createKeyResponse.KeyMetadata.KeyID}
 
 	status, _, decryptResponse, err := decryptHandler(&u, request.Header, &decryptRequest, &context)
 

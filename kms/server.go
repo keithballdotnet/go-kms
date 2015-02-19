@@ -31,7 +31,22 @@ func StartListener() {
 
 	// Set-up API listeners
 	mux := tigertonic.NewTrieServeMux()
-	mux.Handle("GET", "/api/v1/go-kms", tigertonic.Timed(tigertonic.Marshaled(GetHello), "GetHelloHandler", nil))
+	mux.Handle("POST", "/api/v1/go-kms/listkeys", tigertonic.If(
+		func(r *http.Request) (http.Header, error) {
+			tigertonic.Context(r).(*Context).UserAgent = r.UserAgent()
+			tigertonic.Context(r).(*Context).RemoteAddr = RequestAddr(r)
+			return nil, nil
+		},
+		tigertonic.Marshaled(listKeysHandler),
+	))
+	mux.Handle("POST", "/api/v1/go-kms/createkey", tigertonic.If(
+		func(r *http.Request) (http.Header, error) {
+			tigertonic.Context(r).(*Context).UserAgent = r.UserAgent()
+			tigertonic.Context(r).(*Context).RemoteAddr = RequestAddr(r)
+			return nil, nil
+		},
+		tigertonic.Marshaled(createKeyHandler),
+	))
 	mux.Handle("POST", "/api/v1/go-kms/generatedatakey", tigertonic.If(
 		func(r *http.Request) (http.Header, error) {
 			tigertonic.Context(r).(*Context).UserAgent = r.UserAgent()
@@ -94,6 +109,67 @@ func SetupAuthenticationKey() {
 
 	// Get the key
 	SharedKey = string(bytes)
+}
+
+// CreateKeyRequest
+type CreateKeyRequest struct {
+	Description string `json:"Description,omitempty"`
+}
+
+// CreateKeyResponse
+type CreateKeyResponse struct {
+	KeyMetadata KeyMetadata `json:"KeyMetadata"`
+}
+
+// createKeyHandler will generate a new stored key
+func createKeyHandler(u *url.URL, h http.Header, createKeyRequest *CreateKeyRequest, c *Context) (int, http.Header, *CreateKeyResponse, error) {
+	//var err error
+	//defer CatchPanic(&err, "ListKeysRequest")
+
+	log.Println("CreateKeyHandler: Starting...")
+
+	// Authoritze the request
+	if !AuthorizeRequest("POST", u, h) {
+		return http.StatusUnauthorized, nil, nil, nil
+	}
+
+	// Encrypt the key with the master key
+	metadata, err := KmsCrypto.CreateKey(createKeyRequest.Description)
+	if err != nil {
+		return http.StatusInternalServerError, nil, nil, nil
+	}
+
+	return http.StatusOK, nil, &CreateKeyResponse{KeyMetadata: metadata}, nil
+}
+
+// listKeysHandler
+type ListKeysRequest struct {
+}
+
+// ListKeysResponse
+type ListKeysResponse struct {
+	KeyMetadata []KeyMetadata `json:"KeyMetadata"`
+}
+
+// listKeysHandler will list all the stored
+func listKeysHandler(u *url.URL, h http.Header, listKeysRequest *ListKeysRequest, c *Context) (int, http.Header, *ListKeysResponse, error) {
+	//var err error
+	//defer CatchPanic(&err, "ListKeysRequest")
+
+	log.Println("ListKeysRequest: Starting...")
+
+	// Authoritze the request
+	if !AuthorizeRequest("POST", u, h) {
+		return http.StatusUnauthorized, nil, nil, nil
+	}
+
+	// Encrypt the key with the master key
+	metadata, err := KmsCrypto.ListKeys()
+	if err != nil {
+		return http.StatusInternalServerError, nil, nil, nil
+	}
+
+	return http.StatusOK, nil, &ListKeysResponse{KeyMetadata: metadata}, nil
 }
 
 // GenerateDataKeyRequest
@@ -193,13 +269,6 @@ func decryptHandler(u *url.URL, h http.Header, decryptRequest *DecryptRequest, c
 	}
 
 	return http.StatusOK, nil, &DecryptResponse{Plaintext: decryptedData}, nil
-}
-
-func GetHello(u *url.URL, h http.Header, _ interface{}) (int, http.Header, string, error) {
-	log.Println("Got GET hello request")
-
-	// Really simple hello
-	return http.StatusOK, nil, "Server: GO-KMS", nil
 }
 
 // AuthorizeRequest - Will check the request authorization
