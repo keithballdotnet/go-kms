@@ -241,7 +241,6 @@ func encryptHandler(u *url.URL, h http.Header, encryptRequest *EncryptRequest, c
 
 // DecryptRequest
 type DecryptRequest struct {
-	KeyID          string `json:"KeyID"`
 	CiphertextBlob []byte `json:"CiphertextBlob"`
 }
 
@@ -263,7 +262,7 @@ func decryptHandler(u *url.URL, h http.Header, decryptRequest *DecryptRequest, c
 	}
 
 	// Decrypt
-	decryptedData, err := KmsCrypto.Decrypt(decryptRequest.CiphertextBlob, decryptRequest.KeyID)
+	decryptedData, err := KmsCrypto.Decrypt(decryptRequest.CiphertextBlob)
 	if err != nil {
 		return http.StatusInternalServerError, nil, nil, nil
 	}

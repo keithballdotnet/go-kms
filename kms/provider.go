@@ -24,5 +24,5 @@ type CryptoProvider interface {
 	ListKeys() ([]KeyMetadata, error)
 	GetKey(KeyID string) (Key, error)
 	Encrypt(data []byte, KeyID string) ([]byte, error)
-	Decrypt(data []byte, KeyID string) ([]byte, error)
+	Decrypt(data []byte) ([]byte, error)
 }

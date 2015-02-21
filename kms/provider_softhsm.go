@@ -1,6 +1,6 @@
 package kms
 
-import (
+/*import (
 	"fmt"
 	"github.com/miekg/pkcs11"
 	"log"
@@ -188,7 +188,7 @@ func (cp SoftHSMCryptoProvider) Decrypt(data []byte, KeyID string) ([]byte, erro
 	log.Printf("Result: %v len: %v ", string(decryptedData), len(decryptedData))
 
 	return decryptedData, nil
-}
+}*/
 
 /*func BasicTest() {
 

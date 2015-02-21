@@ -183,7 +183,7 @@ func (s *KMSSuite) TestRESTInterfaceFunctions(c *C) {
 
 	request = SetAuth(&r, "POST", u.Path)
 
-	decryptRequest := DecryptRequest{CiphertextBlob: dataKeyResponse.CiphertextBlob, KeyID: createKeyResponse.KeyMetadata.KeyID}
+	decryptRequest := DecryptRequest{CiphertextBlob: dataKeyResponse.CiphertextBlob}
 
 	status, _, decryptResponse, err := decryptHandler(&u, request.Header, &decryptRequest, &context)
 
@@ -198,6 +198,40 @@ func (s *KMSSuite) TestRESTInterfaceFunctions(c *C) {
 
 	// Ensure decrypted key is the same as the key we go via plain text
 	c.Assert(bytes.Equal(decryptResponse.Plaintext, aesKey), IsTrue)
+
+	u = url.URL{Path: "/api/v1/go-kms/encrypt"}
+
+	r = http.Request{Header: http.Header{"accept": {"application/json"}}}
+
+	request = SetAuth(&r, "POST", u.Path)
+
+	somePlaintext := []byte("Kaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaahn!")
+
+	encryptRequest := EncryptRequest{KeyID: createKeyResponse.KeyMetadata.KeyID, Plaintext: somePlaintext}
+
+	status, _, encryptResponse, err := encryptHandler(&u, request.Header, &encryptRequest, &context)
+
+	// No error
+	c.Assert(err == nil, IsTrue, Commentf("Got error: %v", err))
+
+	// Status
+	c.Assert(status == http.StatusOK, IsTrue, Commentf("Incorrect return status: wanted %v got %v", http.StatusOK, status))
+
+	// Ensure we have some data
+	c.Assert(len(encryptResponse.CiphertextBlob) > 0, IsTrue)
+
+	u = url.URL{Path: "/api/v1/go-kms/decrypt"}
+
+	r = http.Request{Header: http.Header{"accept": {"application/json"}}}
+
+	request = SetAuth(&r, "POST", u.Path)
+
+	decryptRequest = DecryptRequest{CiphertextBlob: encryptResponse.CiphertextBlob}
+
+	status, _, decryptResponse, err = decryptHandler(&u, request.Header, &decryptRequest, &context)
+
+	// Ensure decrypted key is the same as the key we go via plain text
+	c.Assert(bytes.Equal(decryptResponse.Plaintext, somePlaintext), IsTrue)
 }
 
 func (s *KMSSuite) TestHMSEncryptDecrypt(c *C) {
@@ -215,7 +249,7 @@ func (s *KMSSuite) TestHMSEncryptDecrypt(c *C) {
 	// No error
 	c.Assert(err == nil, IsTrue, Commentf("Got error: %v", err))
 
-	decryptedData, err := KmsCrypto.Decrypt(encryptedData, "Blocker_RSA4096_PrivKey")
+	decryptedData, err := KmsCrypto.Decrypt(encryptedData)
 
 	fmt.Println("HSM decrypted bytes: " + string(decryptedData))
 
@@ -386,4 +420,48 @@ func (s *KMSSuite) TestHMACKey(c *C) {
 
 	// Test positive.
 	c.Assert(expectedHmac != hmac, IsTrue, Commentf("HMAC should be differnt: %v Got Key %s", expectedHmac, hmac))
+}
+
+func TestGetRandomNumber(t *testing.T) {
+
+	// Lets get a 6 digit number
+	random := GetRandomInt(100000, 999999)
+
+	if random < 100000 || random > 999999 {
+		t.Fatal("Number is outside of desired range")
+	}
+
+	fmt.Printf("Random is: %v\n", random)
+}
+
+func TestRandomSecret(t *testing.T) {
+
+	secret := RandomSecret(0)
+
+	if secret == "" {
+		t.Fatal("Secret is empty")
+	}
+
+	if len(secret) != 16 {
+		t.Fatal("Secret is too short by default")
+	}
+
+	fmt.Printf("Random is: %v\n", secret)
+}
+
+func Test32CharRandomSecret(t *testing.T) {
+
+	secret := RandomSecret(40)
+
+	fmt.Printf("Random is: %v Len: %v\n", secret, len(secret))
+
+	if secret == "" {
+		t.Fatal("Secret is empty")
+	}
+
+	if len(secret) != 64 {
+		t.Fatal("Secret is not 64")
+	}
+
+	fmt.Printf("Random is: %v\n", secret)
 }

@@ -4,9 +4,30 @@ A REST based Key Management Service written in GO.
 
 [![GoDoc](https://godoc.org/github.com/Inflatablewoman/go-kms?status.svg)](https://godoc.org/github.com/Inflatablewoman/go-kms)
 [![Build Status](https://travis-ci.org/Inflatablewoman/go-kms.svg)](https://travis-ci.org/Inflatablewoman/go-kms)
-[![Coverage Status](https://coveralls.io/repos/Inflatablewoman/go-kms/badge.svg)](https://coveralls.io/r/Inflatablewoman/go-kms)
+[![Coverage Status](https://coveralls.io/repos/Inflatablewoman/go-kms/badge.svg?branch=master)](https://coveralls.io/r/Inflatablewoman/go-kms?branch=master)
 
-## Install notes:
+## What is GO-KMS?
+
+GO-KMS is my attempt at creating a Key Management Service in GO.  Modelled extensively on AWS KMS behaviour, the API reflects the Symmetrical Key management provided by AWS KMS.  
+
+GO-KMS authentication is done using a shared key and HMAC-SHA256 over HTTPS.  
+
+The default crypto provider is based on AES256 using the GCM cipher to provide confidentiality as well as authentication.  Keys are encrypted and stored on disk, using a master key which is derived using PBKDF2 from a passphrase.
+
+## Features
+
+- AES Key store
+- Keys encrypted while at rest
+- Shared-key Authentication
+- Playground for HSM support via SoftHSM2
+
+## Todo
+
+- RSA Encryption provider
+- Full HSM provider support 
+
+
+## Install notes if building SofthHsm2 support:
 
 Add some missing things needed to build, pkcs11
 
@@ -51,8 +72,64 @@ Check it worked ok
 softhsm2-util --show-slots
 ```
 
+## Authorization
+
+Authorization is done via a *Authorization* header sent in a request.  Anonymous requests are not allowed.  To authenticate a request, you must sign the request with the shared key when making the request and pass that signature as part of the request.  
+
+Here you can see an example of a Authorization header
+```
+Authorization=RvPtP0QB7iIun1ehwheD4YUo7+fYfw7/ywl+HsC5Ddk=
+```
+
+You construct the signature is built in the following format:
+
+```
+authRequestSig = method + "\n" +
+                 Date + "\n" +
+                 resource
+```
+
+This would result in the following signature to be signed:
+
+```
+POST\nWed, 28 Jan 2015 10:42:13 UTC\n/api/v1/go-ksm
+```
+
+Note that you MUST past the same date value in the request.  Date should be supplied in UTC using RFC1123 format.
+
+```
+x-kms-date=Wed, 28 Jan 2015 10:42:13 UTC
+```
+
+  The signature must be exactly in the same order and include the new line character.  
+
+Now encode the signature using the [HMAC-SHA256](http://en.wikipedia.org/wiki/Hash-based_message_authentication_code) algorithm using the shared key.
+
+This will result in a key like this:
+```
+RvPtP0QB7iIun1ehwheD4YUo7+fYfw7/ywl+HsC5Ddk="
+```
+
+Example go code to create the signature
+
+```go
+date := time.Now().UTC().Format(time.RFC1123) // UTC time
+request.Header.Add("x-kms-date", date)
+
+authRequestKey := fmt.Sprintf("%s\n%s\n%s", method, date, resource)
+
+// See package http://golang.org/pkg/crypto/hmac/ on how golang creates hmacs
+hmac := crypto.GetHmac256(authRequestKey, SharedKey)  
+
+request.Header.Add("Authorization", hmac)
+```
 
 ## Good resources:
+
+### KMS
+
+AWS KMS: https://d0.awsstatic.com/whitepapers/KMS-Cryptographic-Details.pdf
+MS Key Vault: https://msdn.microsoft.com/en-US/library/azure/dn903623
 
 ### PKCS#11
 https://github.com/miekg/pkcs11

@@ -14,10 +14,8 @@ import (
 	"encoding/base32"
 	"encoding/base64"
 	"encoding/binary"
-	"encoding/hex"
 	"encoding/pem"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -161,16 +159,6 @@ func GenerateAesSecret() []byte {
 	return key
 }
 
-// Hex to bytes
-func hex2Bytes(hexStr string) ([]byte, error) {
-	return hex.DecodeString(hexStr)
-}
-
-// Bytes to hex
-func encodeHex(bytes []byte) string {
-	return fmt.Sprintf("%x", bytes)
-}
-
 // AesGCMEncrypt Encrypt data using AES with the GCM chipher mode (Gives Confidentiality and Authenticity)
 func AesGCMEncrypt(plaintext []byte, key []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
@@ -292,17 +280,6 @@ func GetRandomInt(min, max int) int {
 
 	// Now get a number from the range desired
 	return mathrand.Intn(max-min) + min
-}
-
-// GetSalt of a particular length
-func GetSalt(length int) []byte {
-	// Get a random salt
-	salt := make([]byte, length)
-	if _, err := io.ReadFull(rand.Reader, salt); err != nil {
-		return nil
-	}
-
-	return salt
 }
 
 // Generate a Random secret encoded as a b32 string

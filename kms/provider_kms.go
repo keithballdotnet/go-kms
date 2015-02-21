@@ -14,6 +14,9 @@ import (
 	"path/filepath"
 )
 
+// encryptedKeyLength is the length of a 32 bit AES key encrypted using AES256-GCM
+var encryptedKeyLength = 64
+
 // KMSCryptoProvider is an implementation of encryption using a local storage
 type KMSCryptoProvider struct {
 	userkey []byte
@@ -188,7 +191,6 @@ func (cp KMSCryptoProvider) Encrypt(data []byte, KeyID string) ([]byte, error) {
 
 	key, err := cp.GetKey(KeyID)
 	if err != nil {
-		log.Printf("Encrypt - FindKey() failed %s\n", err)
 		return nil, err
 	}
 
@@ -199,21 +201,35 @@ func (cp KMSCryptoProvider) Encrypt(data []byte, KeyID string) ([]byte, error) {
 
 	encryptedData, err := AesGCMEncrypt(data, key.AESKey)
 	if err != nil {
-		log.Printf("Encrypt - AesEncrypt() failed %s\n", err)
 		return nil, err
 	}
 
-	log.Printf("Result: %v len: %v ", string(encryptedData), len(encryptedData))
+	// Encrypt the key ID used with the master key, so we can ID the key later on
+	encryptedKey, err := AesGCMEncrypt([]byte(key.KeyMetadata.KeyID), cp.userkey)
+	if err != nil {
+		return nil, err
+	}
 
-	return encryptedData, nil
+	// Envelope the encrypted key with the encrypted data
+	return append(encryptedKey, encryptedData...), nil
 }
 
 // Decrypt will decrypt the data using the HSM
-func (cp KMSCryptoProvider) Decrypt(data []byte, KeyID string) ([]byte, error) {
+func (cp KMSCryptoProvider) Decrypt(data []byte) ([]byte, error) {
 
-	key, err := cp.GetKey(KeyID)
+	// Find the encrypted key ID
+	encryptedKey := data[:encryptedKeyLength]
+	encryptedData := data[encryptedKeyLength:]
+
+	// Decrypt the key ID used in the encryption
+	keyID, err := AesGCMDecrypt(encryptedKey, cp.userkey)
 	if err != nil {
-		log.Printf("FindKey() failed %s\n", err)
+		return nil, err
+	}
+
+	// Get the key
+	key, err := cp.GetKey(string(keyID))
+	if err != nil {
 		return nil, err
 	}
 
@@ -222,14 +238,12 @@ func (cp KMSCryptoProvider) Decrypt(data []byte, KeyID string) ([]byte, error) {
 		return nil, errors.New("Key is not enabled!")
 	}
 
-	// Let's decrypt again
-	decryptedData, err := AesGCMDecrypt(data, key.AESKey)
+	// Let's decrypt the data
+	decryptedData, err := AesGCMDecrypt(encryptedData, key.AESKey)
 	if err != nil {
 		log.Printf("Decrypt() failed %s\n", err)
 		return nil, err
 	}
-
-	log.Printf("Result: %v len: %v ", string(decryptedData), len(decryptedData))
 
 	return decryptedData, nil
 }
