@@ -137,7 +137,7 @@ func (cp KMSCryptoProvider) CreateKey(description string) (KeyMetadata, error) {
 	keyPath := filepath.Join(Config["GOKMS_KSMC_PATH"], keyID+".key")
 
 	// Encrypt the key data with the user key and perist to disk..
-	encryptedKey, err := AesEncrypt(keyData, cp.userkey)
+	encryptedKey, err := AesGCMEncrypt(keyData, cp.userkey)
 	if err != nil {
 		log.Printf("CreateKey() failed %s\n", err)
 		return KeyMetadata{}, err
@@ -167,7 +167,7 @@ func (cp KMSCryptoProvider) GetKey(KeyID string) (Key, error) {
 	}
 
 	// decrypt the data on disk with the users derived key
-	decryptedData, err := AesDecrypt(encryptedKey, cp.userkey)
+	decryptedData, err := AesGCMDecrypt(encryptedKey, cp.userkey)
 	if err != nil {
 		log.Printf("GetKey() failed %s\n", err)
 		return Key{}, err
@@ -197,7 +197,7 @@ func (cp KMSCryptoProvider) Encrypt(data []byte, KeyID string) ([]byte, error) {
 		return nil, errors.New("Key is not enabled!")
 	}
 
-	encryptedData, err := AesEncrypt(data, key.AESKey)
+	encryptedData, err := AesGCMEncrypt(data, key.AESKey)
 	if err != nil {
 		log.Printf("Encrypt - AesEncrypt() failed %s\n", err)
 		return nil, err
@@ -223,7 +223,7 @@ func (cp KMSCryptoProvider) Decrypt(data []byte, KeyID string) ([]byte, error) {
 	}
 
 	// Let's decrypt again
-	decryptedData, err := AesDecrypt(data, key.AESKey)
+	decryptedData, err := AesGCMDecrypt(data, key.AESKey)
 	if err != nil {
 		log.Printf("Decrypt() failed %s\n", err)
 		return nil, err

@@ -236,7 +236,42 @@ func (s *KMSSuite) TestGenerateKeyFromPassphrase(c *C) {
 
 }
 
-func (s *KMSSuite) TestAesCrypto(c *C) {
+func (s *KMSSuite) TestAesGCMCrypto(c *C) {
+
+	encryptString := "I once had a girl, or should I say, she once had me."
+
+	bytesToEncrypt := []byte(encryptString)
+
+	fmt.Println("GCM bytes to encrypt: " + string(bytesToEncrypt))
+
+	aesKey := GenerateAesSecret()
+
+	encryptedBytes, err := AesGCMEncrypt(bytesToEncrypt, aesKey)
+
+	if err != nil {
+		fmt.Println("Got error: " + err.Error())
+	}
+
+	// No error
+	c.Assert(err == nil, IsTrue)
+
+	fmt.Println("GCM encrypted bytes: " + string(encryptedBytes))
+
+	unencryptedBytes, err := AesGCMDecrypt(encryptedBytes, aesKey)
+
+	if err != nil {
+		fmt.Println("Got error: " + err.Error())
+	}
+
+	// No error
+	c.Assert(err == nil, IsTrue)
+
+	fmt.Println("GCM Unencrypted bytes: " + string(unencryptedBytes))
+
+	c.Assert(bytes.Equal(bytesToEncrypt, unencryptedBytes), IsTrue)
+}
+
+func (s *KMSSuite) TestAesCFBCrypto(c *C) {
 
 	encryptString := "a very very very very secret pot"
 
@@ -246,7 +281,7 @@ func (s *KMSSuite) TestAesCrypto(c *C) {
 
 	aesKey := GenerateAesSecret()
 
-	encryptedBytes, err := AesEncrypt(bytesToEncrypt, aesKey)
+	encryptedBytes, err := AesCFBEncrypt(bytesToEncrypt, aesKey)
 
 	if err != nil {
 		fmt.Println("Got error: " + err.Error())
@@ -257,7 +292,7 @@ func (s *KMSSuite) TestAesCrypto(c *C) {
 
 	fmt.Println("encrypted bytes: " + string(encryptedBytes))
 
-	unencryptedBytes, err := AesDecrypt(encryptedBytes, aesKey)
+	unencryptedBytes, err := AesCFBDecrypt(encryptedBytes, aesKey)
 
 	if err != nil {
 		fmt.Println("Got error: " + err.Error())
