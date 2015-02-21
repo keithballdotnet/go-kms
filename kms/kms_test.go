@@ -27,6 +27,8 @@ func (s *KMSSuite) SetUpSuite(c *C) {
 
 	os.Setenv("GOKMS_KSMC_PASSPHRASE", "A long passphrase that will be used to generate the master key")
 
+	os.Setenv("GOKMS_KSMC_PATH", c.MkDir())
+
 	InitConfig()
 
 	// Create provider
