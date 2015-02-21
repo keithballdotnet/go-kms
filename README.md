@@ -1,4 +1,10 @@
-# This is just a play ground for now.
+# GO - Key Management Service
+
+A REST based Key Management Service written in GO.
+
+[![GoDoc](https://godoc.org/github.com/Inflatablewoman/go-kms?status.svg)](https://godoc.org/github.com/Inflatablewoman/go-kms)
+[![Build Status](https://travis-ci.org/Inflatablewoman/go-kms.svg)](https://travis-ci.org/Inflatablewoman/go-kms)
+[![Coverage Status](https://coveralls.io/repos/Inflatablewoman/go-kms/badge.svg)](https://coveralls.io/r/Inflatablewoman/go-kms)
 
 ## Install notes:
 

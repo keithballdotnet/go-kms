@@ -1,0 +1,19 @@
+language: go
+
+go:
+  - tip
+
+install:
+  - go get -v github.com/Inflatablewoman/go-kms
+  - go get gopkg.in/check.v1
+  - go get golang.org/x/tools/cmd/cover
+  - go get github.com/mattn/goveralls
+
+script: 
+  - go build github.com/Inflatablewoman/go-kms
+  - go test -v github.com/Inflatablewoman/go-kms/kms
+  - go test -v -covermode=count -coverprofile=coverage.out github.com/Inflatablewoman/go-kms/kms
+  - $HOME/gopath/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
+
+notifications:
+  email: false
