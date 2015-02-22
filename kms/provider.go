@@ -23,6 +23,8 @@ type CryptoProvider interface {
 	CreateKey(description string) (KeyMetadata, error)
 	ListKeys() ([]KeyMetadata, error)
 	GetKey(KeyID string) (Key, error)
+	EnableKey(KeyID string) (KeyMetadata, error)
+	DisableKey(KeyID string) (KeyMetadata, error)
 	Encrypt(data []byte, KeyID string) ([]byte, error)
 	Decrypt(data []byte) ([]byte, error)
 }

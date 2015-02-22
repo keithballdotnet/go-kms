@@ -59,6 +59,15 @@ func SetAuth(request *http.Request, method string, resource string) *http.Reques
 	return request
 }
 
+func (s *KMSSuite) TestAuthenticationKeyCreation(c *C) {
+	Config["GOKMS_AUTH_KEY"] = c.MkDir() + "auth.key"
+
+	SetupAuthenticationKey()
+
+	// Reset test Shared Key
+	SharedKey = "e7yflbeeid26rredmwtbiyzxijzak6altcnrsi4yol2f5sexbgdwevlpgosfoeyy"
+}
+
 func (s *KMSSuite) TestCreateKeyThenGetKeyListKeysAndCheckKeyIsThere(c *C) {
 	desc := "A new key description!"
 
@@ -230,8 +239,72 @@ func (s *KMSSuite) TestRESTInterfaceFunctions(c *C) {
 
 	status, _, decryptResponse, err = decryptHandler(&u, request.Header, &decryptRequest, &context)
 
+	c.Assert(err == nil, IsTrue, Commentf("Got error: %v", err))
+	c.Assert(status == http.StatusOK, IsTrue, Commentf("Incorrect return status: wanted %v got %v", http.StatusOK, status))
+
 	// Ensure decrypted key is the same as the key we go via plain text
 	c.Assert(bytes.Equal(decryptResponse.Plaintext, somePlaintext), IsTrue)
+
+	// Disable the key and try to decrypt again
+
+	u = url.URL{Path: "/api/v1/go-kms/disablekey"}
+
+	r = http.Request{Header: http.Header{"accept": {"application/json"}}}
+
+	request = SetAuth(&r, "POST", u.Path)
+
+	disableKeyRequest := DisableKeyRequest{KeyID: createKeyResponse.KeyMetadata.KeyID}
+
+	status, _, disableKeyResponse, err := disableKeyHandler(&u, request.Header, &disableKeyRequest, &context)
+
+	c.Assert(err == nil, IsTrue, Commentf("Got error: %v", err))
+	c.Assert(status == http.StatusOK, IsTrue, Commentf("Incorrect return status: wanted %v got %v", http.StatusOK, status))
+
+	c.Assert(disableKeyResponse.KeyMetadata.Enabled, IsFalse)
+
+	u = url.URL{Path: "/api/v1/go-kms/decrypt"}
+
+	r = http.Request{Header: http.Header{"accept": {"application/json"}}}
+
+	request = SetAuth(&r, "POST", u.Path)
+
+	decryptRequest = DecryptRequest{CiphertextBlob: encryptResponse.CiphertextBlob}
+
+	status, _, decryptResponse, err = decryptHandler(&u, request.Header, &decryptRequest, &context)
+
+	c.Assert(status == http.StatusOK, IsFalse)
+
+	u = url.URL{Path: "/api/v1/go-kms/enablekey"}
+
+	r = http.Request{Header: http.Header{"accept": {"application/json"}}}
+
+	request = SetAuth(&r, "POST", u.Path)
+
+	enableKeyRequest := EnableKeyRequest{KeyID: createKeyResponse.KeyMetadata.KeyID}
+
+	status, _, enableKeyResponse, err := enableKeyHandler(&u, request.Header, &enableKeyRequest, &context)
+
+	c.Assert(err == nil, IsTrue, Commentf("Got error: %v", err))
+	c.Assert(status == http.StatusOK, IsTrue, Commentf("Incorrect return status: wanted %v got %v", http.StatusOK, status))
+
+	c.Assert(enableKeyResponse.KeyMetadata.Enabled, IsTrue)
+
+	u = url.URL{Path: "/api/v1/go-kms/decrypt"}
+
+	r = http.Request{Header: http.Header{"accept": {"application/json"}}}
+
+	request = SetAuth(&r, "POST", u.Path)
+
+	decryptRequest = DecryptRequest{CiphertextBlob: encryptResponse.CiphertextBlob}
+
+	status, _, decryptResponse, err = decryptHandler(&u, request.Header, &decryptRequest, &context)
+
+	c.Assert(err == nil, IsTrue, Commentf("Got error: %v", err))
+	c.Assert(status == http.StatusOK, IsTrue, Commentf("Incorrect return status: wanted %v got %v", http.StatusOK, status))
+
+	// Ensure decrypted key is the same as the key we go via plain text
+	c.Assert(bytes.Equal(decryptResponse.Plaintext, somePlaintext), IsTrue)
+
 }
 
 func (s *KMSSuite) TestHMSEncryptDecrypt(c *C) {

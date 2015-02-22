@@ -11,7 +11,6 @@ install:
 
 script: 
   - go build github.com/Inflatablewoman/go-kms
-  - go test -v github.com/Inflatablewoman/go-kms/kms
   - go test -v -covermode=count -coverprofile=coverage.out github.com/Inflatablewoman/go-kms/kms
   - $HOME/gopath/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
 

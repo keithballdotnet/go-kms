@@ -87,6 +87,42 @@ func SetKMSCryptoConfig() {
 	return
 }
 
+// EnableKey - will mark a key as enabled
+func (cp KMSCryptoProvider) EnableKey(KeyID string) (KeyMetadata, error) {
+	key, err := cp.GetKey(KeyID)
+	if err != nil {
+		return KeyMetadata{}, err
+	}
+
+	key.KeyMetadata.Enabled = true
+
+	err = cp.SaveKey(key)
+
+	if err != nil {
+		return KeyMetadata{}, err
+	}
+
+	return key.KeyMetadata, nil
+}
+
+// DisableKey - will mark a key as disabled
+func (cp KMSCryptoProvider) DisableKey(KeyID string) (KeyMetadata, error) {
+	key, err := cp.GetKey(KeyID)
+	if err != nil {
+		return KeyMetadata{}, err
+	}
+
+	key.KeyMetadata.Enabled = false
+
+	err = cp.SaveKey(key)
+
+	if err != nil {
+		return KeyMetadata{}, err
+	}
+
+	return key.KeyMetadata, nil
+}
+
 // ListKeys will list the available keys
 func (cp KMSCryptoProvider) ListKeys() ([]KeyMetadata, error) {
 
@@ -129,31 +165,39 @@ func (cp KMSCryptoProvider) CreateKey(description string) (KeyMetadata, error) {
 	// Create new key object
 	key := Key{KeyMetadata: keyMetadata, AESKey: aesKey}
 
-	// JSON -> byte
-	keyData, err := json.Marshal(key)
+	// Persist the key to disk
+	err := cp.SaveKey(key)
 	if err != nil {
-		log.Printf("CreateKey() failed %s\n", err)
 		return KeyMetadata{}, err
 	}
 
+	return keyMetadata, nil
+}
+
+// SaveKey will persist a key to disk
+func (cp KMSCryptoProvider) SaveKey(key Key) error {
+	// JSON -> byte
+	keyData, err := json.Marshal(key)
+	if err != nil {
+		return err
+	}
+
 	// Create path to key
-	keyPath := filepath.Join(Config["GOKMS_KSMC_PATH"], keyID+".key")
+	keyPath := filepath.Join(Config["GOKMS_KSMC_PATH"], key.KeyMetadata.KeyID+".key")
 
 	// Encrypt the key data with the user key and perist to disk..
 	encryptedKey, err := AesGCMEncrypt(keyData, cp.userkey)
 	if err != nil {
-		log.Printf("CreateKey() failed %s\n", err)
-		return KeyMetadata{}, err
+		return err
 	}
 
 	// Store key on disk
 	err = ioutil.WriteFile(keyPath, encryptedKey, 0600)
 	if err != nil {
-		log.Printf("CreateKey() failed %s\n", err)
-		return KeyMetadata{}, err
+		return err
 	}
 
-	return keyMetadata, nil
+	return nil
 }
 
 // GetKey from the the store

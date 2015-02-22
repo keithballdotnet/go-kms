@@ -55,6 +55,22 @@ func StartListener() {
 		},
 		tigertonic.Marshaled(generateDataKeyHandler),
 	))
+	mux.Handle("POST", "/api/v1/go-kms/enablekey", tigertonic.If(
+		func(r *http.Request) (http.Header, error) {
+			tigertonic.Context(r).(*Context).UserAgent = r.UserAgent()
+			tigertonic.Context(r).(*Context).RemoteAddr = RequestAddr(r)
+			return nil, nil
+		},
+		tigertonic.Marshaled(enableKeyHandler),
+	))
+	mux.Handle("POST", "/api/v1/go-kms/disablekey", tigertonic.If(
+		func(r *http.Request) (http.Header, error) {
+			tigertonic.Context(r).(*Context).UserAgent = r.UserAgent()
+			tigertonic.Context(r).(*Context).RemoteAddr = RequestAddr(r)
+			return nil, nil
+		},
+		tigertonic.Marshaled(disableKeyHandler),
+	))
 	mux.Handle("POST", "/api/v1/go-kms/decrypt", tigertonic.If(
 		func(r *http.Request) (http.Header, error) {
 			tigertonic.Context(r).(*Context).UserAgent = r.UserAgent()
@@ -170,6 +186,68 @@ func listKeysHandler(u *url.URL, h http.Header, listKeysRequest *ListKeysRequest
 	}
 
 	return http.StatusOK, nil, &ListKeysResponse{KeyMetadata: metadata}, nil
+}
+
+// EnableKeyRequest
+type EnableKeyRequest struct {
+	KeyID string `json:"KeyID"`
+}
+
+// EnableKeyResponse
+type EnableKeyResponse struct {
+	KeyMetadata KeyMetadata `json:"KeyMetadata"`
+}
+
+// enableKeyHandler will enable a AES key for use
+func enableKeyHandler(u *url.URL, h http.Header, enableKeyRequest *EnableKeyRequest, c *Context) (int, http.Header, *EnableKeyResponse, error) {
+	//var err error
+	//defer CatchPanic(&err, "GenerateDataKeyRequest")
+
+	log.Println("EnableKeyRequest: Starting...")
+
+	// Authoritze the request
+	if !AuthorizeRequest("POST", u, h) {
+		return http.StatusUnauthorized, nil, nil, nil
+	}
+
+	// Enable the key
+	metadata, err := KmsCrypto.EnableKey(enableKeyRequest.KeyID)
+	if err != nil {
+		return http.StatusInternalServerError, nil, nil, nil
+	}
+
+	return http.StatusOK, nil, &EnableKeyResponse{KeyMetadata: metadata}, nil
+}
+
+// DisableKeyRequest
+type DisableKeyRequest struct {
+	KeyID string `json:"KeyID"`
+}
+
+// DisableKeyResponse
+type DisableKeyResponse struct {
+	KeyMetadata KeyMetadata `json:"KeyMetadata"`
+}
+
+// disableKeyHandler will disable a AES key for use
+func disableKeyHandler(u *url.URL, h http.Header, disableKeyRequest *DisableKeyRequest, c *Context) (int, http.Header, *DisableKeyResponse, error) {
+	//var err error
+	//defer CatchPanic(&err, "GenerateDataKeyRequest")
+
+	log.Println("DisableKeyRequest: Starting...")
+
+	// Authoritze the request
+	if !AuthorizeRequest("POST", u, h) {
+		return http.StatusUnauthorized, nil, nil, nil
+	}
+
+	// Disable the key
+	metadata, err := KmsCrypto.DisableKey(disableKeyRequest.KeyID)
+	if err != nil {
+		return http.StatusInternalServerError, nil, nil, nil
+	}
+
+	return http.StatusOK, nil, &DisableKeyResponse{KeyMetadata: metadata}, nil
 }
 
 // GenerateDataKeyRequest
