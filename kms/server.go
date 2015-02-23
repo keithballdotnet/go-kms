@@ -89,7 +89,7 @@ func StartListener() {
 	))
 
 	// Log to Console
-	server := tigertonic.NewServer(fmt.Sprintf("%s:%s", Config["GOKMS_HOST"], Config["GOKMS_PORT"]), tigertonic.ApacheLogged(mux))
+	server := tigertonic.NewServer(fmt.Sprintf("%s:%s", Config["GOKMS_HOST"], Config["GOKMS_PORT"]), tigertonic.ApacheLogged(tigertonic.WithContext(mux, Context{})))
 	if err := server.ListenAndServeTLS(Config["GOKMS_SSL_CERT"], Config["GOKMS_SSL_KEY"]); err != nil {
 		Exit(fmt.Sprintf("Problem starting server: %v ", err), 2)
 	}

@@ -15,13 +15,15 @@ func Start() {
 	// Get and check config
 	InitConfig()
 
-	switch Config["GOKMS_CRYPTO_PROVIDER"] {
+	KmsCrypto, err = NewKMSCryptoProvider()
+
+	/*switch Config["GOKMS_CRYPTO_PROVIDER"] {
 	case "softhsm":
 		// Create crypto provider
 		//KmsCrypto, err = NewSoftHSMCryptoProvider()
 	default:
 		KmsCrypto, err = NewKMSCryptoProvider()
-	}
+	}*/
 
 	if err != nil {
 		Exit(fmt.Sprintf("Problem creating crypto provider: %v", err), 2)
