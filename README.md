@@ -10,9 +10,11 @@ A REST based Key Management Service written in GO.
 
 GO-KMS is my attempt at creating a Key Management Service in GO.  Modelled extensively on AWS KMS behaviour, the API reflects the Symmetrical Key management provided by AWS KMS.  
 
-GO-KMS authentication is done using a shared key and HMAC-SHA256 over HTTPS.  
+GO-KMS authentication is done using [HMAC-SHA256](http://en.wikipedia.org/wiki/Hash-based_message_authentication_code) over HTTPS.  
 
-The default crypto provider is based on AES256 using the GCM cipher to provide confidentiality as well as authentication.  Keys are encrypted and stored on disk, using a master key which is derived using PBKDF2 from a passphrase.
+The default crypto provider is based on [AES](http://en.wikipedia.org/wiki/Advanced_Encryption_Standard) and a key size of 256bits using the [GCM cipher](http://en.wikipedia.org/wiki/Galois/Counter_Mode) to provide confidentiality as well as authentication.  Keys are encrypted and stored on disk, using a master key which is derived using [PBKDF2](http://en.wikipedia.org/wiki/PBKDF2) from a passphrase.
+
+Similar to 
 
 ## Features
 
@@ -25,7 +27,6 @@ The default crypto provider is based on AES256 using the GCM cipher to provide c
 
 - RSA Encryption provider
 - Full HSM provider support 
-
 
 ## Install notes if building SofthHsm2 support:
 

@@ -26,5 +26,6 @@ type CryptoProvider interface {
 	EnableKey(KeyID string) (KeyMetadata, error)
 	DisableKey(KeyID string) (KeyMetadata, error)
 	Encrypt(data []byte, KeyID string) ([]byte, error)
-	Decrypt(data []byte) ([]byte, error)
+	Decrypt(data []byte) ([]byte, string, error)
+	ReEncrypt(data []byte, KeyID string) ([]byte, string, error)
 }

@@ -87,6 +87,14 @@ func StartListener() {
 		},
 		tigertonic.Marshaled(encryptHandler),
 	))
+	mux.Handle("POST", "/api/v1/go-kms/reencrypt", tigertonic.If(
+		func(r *http.Request) (http.Header, error) {
+			tigertonic.Context(r).(*Context).UserAgent = r.UserAgent()
+			tigertonic.Context(r).(*Context).RemoteAddr = RequestAddr(r)
+			return nil, nil
+		},
+		tigertonic.Marshaled(reEncryptHandler),
+	))
 
 	// Log to Console
 	server := tigertonic.NewServer(fmt.Sprintf("%s:%s", Config["GOKMS_HOST"], Config["GOKMS_PORT"]), tigertonic.ApacheLogged(tigertonic.WithContext(mux, Context{})))
@@ -125,6 +133,40 @@ func SetupAuthenticationKey() {
 
 	// Get the key
 	SharedKey = string(bytes)
+}
+
+// ReEncryptRequest
+type ReEncryptRequest struct {
+	CiphertextBlob   []byte `json:"CiphertextBlob"`
+	DestinationKeyID string `json:"DestinationKeyId"`
+}
+
+// ReEncryptResponse
+type ReEncryptResponse struct {
+	CiphertextBlob []byte `json:"CiphertextBlob"`
+	KeyID          string `json:"KeyID"`
+	SourceKeyID    string `json:"SourceKeyID"`
+}
+
+// reEncryptHandler will re-encrypt the passed Ciphertext with a new Key
+func reEncryptHandler(u *url.URL, h http.Header, reEncryptRequest *ReEncryptRequest, c *Context) (int, http.Header, *ReEncryptResponse, error) {
+	//var err error
+	//defer CatchPanic(&err, "ListKeysRequest")
+
+	log.Println("ReEncryptHandler: Starting...")
+
+	// Authoritze the request
+	if !AuthorizeRequest("POST", u, h) {
+		return http.StatusUnauthorized, nil, nil, nil
+	}
+
+	// Reencrypt the data
+	ciphertextBlob, sourceKeyID, err := KmsCrypto.ReEncrypt(reEncryptRequest.CiphertextBlob, reEncryptRequest.DestinationKeyID)
+	if err != nil {
+		return http.StatusInternalServerError, nil, nil, nil
+	}
+
+	return http.StatusOK, nil, &ReEncryptResponse{CiphertextBlob: ciphertextBlob, KeyID: reEncryptRequest.DestinationKeyID, SourceKeyID: sourceKeyID}, nil
 }
 
 // CreateKeyRequest
@@ -340,7 +382,7 @@ func decryptHandler(u *url.URL, h http.Header, decryptRequest *DecryptRequest, c
 	}
 
 	// Decrypt
-	decryptedData, err := KmsCrypto.Decrypt(decryptRequest.CiphertextBlob)
+	decryptedData, _, err := KmsCrypto.Decrypt(decryptRequest.CiphertextBlob)
 	if err != nil {
 		return http.StatusInternalServerError, nil, nil, nil
 	}

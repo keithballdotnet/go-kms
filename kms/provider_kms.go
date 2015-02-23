@@ -230,6 +230,25 @@ func (cp KMSCryptoProvider) GetKey(KeyID string) (Key, error) {
 	return key, nil
 }
 
+// ReEncrypt will decrypt with the current key, and rencrypt with the new key id
+func (cp KMSCryptoProvider) ReEncrypt(data []byte, KeyID string) ([]byte, string, error) {
+
+	// Decrypt the data
+	plaintext, sourceKeyID, err := cp.Decrypt(data)
+	if err != nil {
+		return nil, "", err
+	}
+
+	// Encrypt with the new key
+	ciphertext, err := cp.Encrypt(plaintext, KeyID)
+	if err != nil {
+		return nil, "", err
+	}
+
+	// return encrypted data
+	return ciphertext, sourceKeyID, nil
+}
+
 // Encrypt will encrypt the data using the HSM
 func (cp KMSCryptoProvider) Encrypt(data []byte, KeyID string) ([]byte, error) {
 
@@ -259,7 +278,7 @@ func (cp KMSCryptoProvider) Encrypt(data []byte, KeyID string) ([]byte, error) {
 }
 
 // Decrypt will decrypt the data using the HSM
-func (cp KMSCryptoProvider) Decrypt(data []byte) ([]byte, error) {
+func (cp KMSCryptoProvider) Decrypt(data []byte) ([]byte, string, error) {
 
 	// Find the encrypted key ID
 	encryptedKey := data[:encryptedKeyLength]
@@ -268,26 +287,26 @@ func (cp KMSCryptoProvider) Decrypt(data []byte) ([]byte, error) {
 	// Decrypt the key ID used in the encryption
 	keyID, err := AesGCMDecrypt(encryptedKey, cp.userkey)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	// Get the key
 	key, err := cp.GetKey(string(keyID))
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	// Check to see if key is enabled
 	if !key.KeyMetadata.Enabled {
-		return nil, errors.New("Key is not enabled!")
+		return nil, "", errors.New("Key is not enabled!")
 	}
 
 	// Let's decrypt the data
 	decryptedData, err := AesGCMDecrypt(encryptedData, key.AESKey)
 	if err != nil {
 		log.Printf("Decrypt() failed %s\n", err)
-		return nil, err
+		return nil, "", err
 	}
 
-	return decryptedData, nil
+	return decryptedData, string(keyID), nil
 }

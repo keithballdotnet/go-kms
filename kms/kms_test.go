@@ -305,6 +305,63 @@ func (s *KMSSuite) TestRESTInterfaceFunctions(c *C) {
 	// Ensure decrypted key is the same as the key we go via plain text
 	c.Assert(bytes.Equal(decryptResponse.Plaintext, somePlaintext), IsTrue)
 
+	u = url.URL{Path: "/api/v1/go-kms/createkey"}
+	r = http.Request{Header: http.Header{"accept": {"application/json"}}}
+	request = SetAuth(&r, "POST", u.Path)
+
+	description2 := "II Test Encryption Key"
+
+	createKeyRequest2 := CreateKeyRequest{Description: description2}
+
+	status, _, createKeyResponse2, err := createKeyHandler(&u, request.Header, &createKeyRequest2, &context)
+
+	c.Assert(err == nil, IsTrue, Commentf("Got error: %v", err))
+	c.Assert(status == http.StatusOK, IsTrue, Commentf("Incorrect return status: wanted %v got %v", http.StatusOK, status))
+
+	// Ensure the key is enabled
+	c.Assert(createKeyResponse2.KeyMetadata.Enabled, IsTrue)
+
+	// Check the description is correct
+	c.Assert(createKeyResponse2.KeyMetadata.Description == description2, IsTrue)
+
+	u = url.URL{Path: "/api/v1/go-kms/reencrypt"}
+
+	r = http.Request{Header: http.Header{"accept": {"application/json"}}}
+
+	request = SetAuth(&r, "POST", u.Path)
+
+	reEncryptRequest := ReEncryptRequest{CiphertextBlob: encryptResponse.CiphertextBlob, DestinationKeyID: createKeyResponse2.KeyMetadata.KeyID}
+
+	status, _, reEncryptResponse, err := reEncryptHandler(&u, request.Header, &reEncryptRequest, &context)
+
+	c.Assert(err == nil, IsTrue, Commentf("Got error: %v", err))
+	c.Assert(status == http.StatusOK, IsTrue, Commentf("Incorrect return status: wanted %v got %v", http.StatusOK, status))
+
+	// Ensure the key was encrypted with the original key
+	c.Assert(reEncryptResponse.SourceKeyID == createKeyResponse.KeyMetadata.KeyID, IsTrue)
+
+	// Ensure data is now encrypted with the new key
+	c.Assert(reEncryptResponse.KeyID == createKeyResponse2.KeyMetadata.KeyID, IsTrue)
+
+	// Ensure that the encrypted data has changed
+	c.Assert(bytes.Equal(reEncryptResponse.CiphertextBlob, encryptResponse.CiphertextBlob), IsFalse)
+
+	u = url.URL{Path: "/api/v1/go-kms/decrypt"}
+
+	r = http.Request{Header: http.Header{"accept": {"application/json"}}}
+
+	request = SetAuth(&r, "POST", u.Path)
+
+	decryptRequest = DecryptRequest{CiphertextBlob: reEncryptResponse.CiphertextBlob}
+
+	status, _, decryptResponse, err = decryptHandler(&u, request.Header, &decryptRequest, &context)
+
+	c.Assert(err == nil, IsTrue, Commentf("Got error: %v", err))
+	c.Assert(status == http.StatusOK, IsTrue, Commentf("Incorrect return status: wanted %v got %v", http.StatusOK, status))
+
+	// Ensure decrypted key is the same as the key we go via plain text
+	c.Assert(bytes.Equal(decryptResponse.Plaintext, somePlaintext), IsTrue)
+
 }
 
 func (s *KMSSuite) TestHMSEncryptDecrypt(c *C) {
@@ -322,7 +379,7 @@ func (s *KMSSuite) TestHMSEncryptDecrypt(c *C) {
 	// No error
 	c.Assert(err == nil, IsTrue, Commentf("Got error: %v", err))
 
-	decryptedData, err := KmsCrypto.Decrypt(encryptedData)
+	decryptedData, _, err := KmsCrypto.Decrypt(encryptedData)
 
 	fmt.Println("HSM decrypted bytes: " + string(decryptedData))
 
