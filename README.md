@@ -8,13 +8,11 @@ A REST based Key Management Service written in GO.
 
 ## What is GO-KMS?
 
-GO-KMS is my attempt at creating a Key Management Service in GO.  Modelled extensively on AWS KMS behaviour, the API reflects the Symmetrical Key management provided by AWS KMS.  
+GO-KMS is my attempt at creating a Key Management Service in GO.  Modelled extensively on AWS KMS behaviour, the API is used for symmetrical key management.  
 
 GO-KMS authentication is done using [HMAC-SHA256](http://en.wikipedia.org/wiki/Hash-based_message_authentication_code) over HTTPS.  
 
 The default crypto provider is based on [AES](http://en.wikipedia.org/wiki/Advanced_Encryption_Standard) and a key size of 256bits using the [GCM cipher](http://en.wikipedia.org/wiki/Galois/Counter_Mode) to provide confidentiality as well as authentication.  Keys are encrypted and stored on disk, using a master key which is derived using [PBKDF2](http://en.wikipedia.org/wiki/PBKDF2) from a passphrase.
-
-Similar to 
 
 ## Features
 
@@ -25,53 +23,9 @@ Similar to
 
 ## Todo
 
+- Some documentation about the keys
 - RSA Encryption provider
 - Full HSM provider support 
-
-## Install notes if building SofthHsm2 support:
-
-Add some missing things needed to build, pkcs11
-
-```
-sudo yum install libtool-ltdl-devel
-```
-
-Install softhsm2
-```
-sudo yum-config-manager --add-repo http://copr-fe.cloud.fedoraproject.org/coprs/pspacek/softhsm2/
-sudo yum install softhsm2
-```
-
-Create a place to store the tokens
-
-```
-mkdir /home/keithball/Documents/tokens
-```
-
-Create/change config file to reflect new token location
-
-```
-# SoftHSM v2 configuration file
-
-directories.tokendir = /home/keithball/Documents/tokens
-objectstore.backend = file
-
-# ERROR, WARNING, INFO, DEBUG
-log.level = DEBUG
-```
-
-Create initial token...
-
-```
-export SOFTHSM2_CONF=$PWD/softhsm2.conf
-softhsm2-util --init-token --slot 0 --label "My token 1"
-```
-
-Check it worked ok
-
-```
-softhsm2-util --show-slots
-```
 
 ## Authorization
 
@@ -129,17 +83,62 @@ request.Header.Add("Authorization", hmac)
 
 ### KMS
 
-AWS KMS: https://d0.awsstatic.com/whitepapers/KMS-Cryptographic-Details.pdf
-MS Key Vault: https://msdn.microsoft.com/en-US/library/azure/dn903623
+- AWS KMS: https://d0.awsstatic.com/whitepapers/KMS-Cryptographic-Details.pdf
+- MS Key Vault: https://msdn.microsoft.com/en-US/library/azure/dn903623
 
 ### PKCS#11
-https://github.com/miekg/pkcs11
 
-http://www-01.ibm.com/support/knowledgecenter/linuxonibm/com.ibm.linux.z.lxce/lxce_linklib_object_samples.html
+- https://github.com/miekg/pkcs11
+- http://www-01.ibm.com/support/knowledgecenter/linuxonibm/com.ibm.linux.z.lxce/lxce_linklib_object_samples.html
 
 ### HMS
-https://www.opendnssec.org/
-SofthHsm2 only supports RSA encryption: https://wiki.opendnssec.org/display/SoftHSM/v2+Requirements
 
-https://wiki.opendnssec.org/display/SoftHSMDOCS/SoftHSM+Documentation+v2.0
-http://docs.oracle.com/javase/7/docs/technotes/guides/security/p11guide.html
+- https://www.opendnssec.org/
+- SofthHsm2 only supports RSA encryption: https://wiki.opendnssec.org/display/SoftHSM/v2+Requirements
+- https://wiki.opendnssec.org/display/SoftHSMDOCS/SoftHSM+Documentation+v2.0
+- http://docs.oracle.com/javase/7/docs/technotes/guides/security/p11guide.html
+
+## Install notes if building SofthHsm2 support:
+
+Add some missing things needed to build, pkcs11
+
+```
+sudo yum install libtool-ltdl-devel
+```
+
+Install softhsm2
+```
+sudo yum-config-manager --add-repo http://copr-fe.cloud.fedoraproject.org/coprs/pspacek/softhsm2/
+sudo yum install softhsm2
+```
+
+Create a place to store the tokens
+
+```
+mkdir /home/keithball/Documents/tokens
+```
+
+Create/change config file to reflect new token location
+
+```
+# SoftHSM v2 configuration file
+
+directories.tokendir = /home/keithball/Documents/tokens
+objectstore.backend = file
+
+# ERROR, WARNING, INFO, DEBUG
+log.level = DEBUG
+```
+
+Create initial token...
+
+```
+export SOFTHSM2_CONF=$PWD/softhsm2.conf
+softhsm2-util --init-token --slot 0 --label "My token 1"
+```
+
+Check it worked ok
+
+```
+softhsm2-util --show-slots
+```
