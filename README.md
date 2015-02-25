@@ -33,6 +33,7 @@ GO-KMS-CLI is a command line interface which can be used to manage and interact 
 
 - Some documentation about the keys
 - RSA Encryption provider
+- Automatic key rotation?
 - Full HSM provider support 
 
 ## How-To
@@ -125,7 +126,7 @@ request.Header.Add("Authorization", hmac)
 - https://github.com/miekg/pkcs11
 - http://www-01.ibm.com/support/knowledgecenter/linuxonibm/com.ibm.linux.z.lxce/lxce_linklib_object_samples.html
 
-### HMS
+### HSM
 
 - https://www.opendnssec.org/
 - SofthHsm2 only supports RSA encryption: https://wiki.opendnssec.org/display/SoftHSM/v2+Requirements
