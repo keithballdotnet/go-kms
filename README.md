@@ -8,7 +8,7 @@ A REST based Key Management Service written in GO.
 
 ## What is GO-KMS?
 
-GO-KMS is my attempt at creating a Key Management Service in GO.  Modelled extensively on AWS KMS behaviour, the API is used for symmetrical key management.  
+GO-KMS is a encryption Key Management Service in GO.  Modelled extensively on AWS KMS behaviour, the API is used for symmetrical key management.  It also offers as service functionality such as Encryption/Decryption.
 
 GO-KMS authentication is done using [HMAC-SHA256](http://en.wikipedia.org/wiki/Hash-based_message_authentication_code) over HTTPS.  
 
