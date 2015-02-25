@@ -8,11 +8,11 @@ A REST based Key Management Service written in GO.
 
 ## What is GO-KMS?
 
-GO-KMS is a encryption Key Management Service in GO.  Modelled extensively on AWS KMS behaviour, the API is used for symmetrical key management.  It also offers as service functionality such as Encryption/Decryption.
-
-GO-KMS authentication is done using [HMAC-SHA256](http://en.wikipedia.org/wiki/Hash-based_message_authentication_code) over HTTPS.  
+GO-KMS is a encryption Key Management Service in GO.  Modelled extensively on AWS KMS behaviour, the API is used for symmetrical key management.  It also offers Cryptography as a Service functionality such as encryption/decryption/reencryption without exposing keys.
 
 The default crypto provider is based on [AES](http://en.wikipedia.org/wiki/Advanced_Encryption_Standard) and a key size of 256bits using the [GCM cipher](http://en.wikipedia.org/wiki/Galois/Counter_Mode) to provide confidentiality as well as authentication.  Keys are encrypted and stored on disk, using a master key which is derived using [PBKDF2](http://en.wikipedia.org/wiki/PBKDF2) from a passphrase.
+
+GO-KMS authentication is done using [HMAC-SHA256](http://en.wikipedia.org/wiki/Hash-based_message_authentication_code) over HTTPS.  
 
 ### GO-KMS - Command Line Interface
 
@@ -21,9 +21,13 @@ GO-KMS-CLI is a command line interface which can be used to manage and interact 
 ## Features
 
 - AES Key store
+- Cryptography as a Service
+	+ Encrypt
+	+ Decrypt
+	+ Re-encrypt
 - Keys encrypted while at rest
 - Shared-key Authentication
-- Playground for HSM support via SoftHSM2
+- Playground for HSM support via SoftHSM2 and PKCS#11
 
 ## Todo
 
