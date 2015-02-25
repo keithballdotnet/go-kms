@@ -14,6 +14,10 @@ GO-KMS authentication is done using [HMAC-SHA256](http://en.wikipedia.org/wiki/H
 
 The default crypto provider is based on [AES](http://en.wikipedia.org/wiki/Advanced_Encryption_Standard) and a key size of 256bits using the [GCM cipher](http://en.wikipedia.org/wiki/Galois/Counter_Mode) to provide confidentiality as well as authentication.  Keys are encrypted and stored on disk, using a master key which is derived using [PBKDF2](http://en.wikipedia.org/wiki/PBKDF2) from a passphrase.
 
+### GO-KMS - Command Line Interface
+
+GO-KMS-CLI is a command line interface which can be used to manage and interact with go-kms.  The project can be found here: [https://github.com/Inflatablewoman/go-kms-cli](https://github.com/Inflatablewoman/go-kms-cli)
+
 ## Features
 
 - AES Key store
@@ -26,6 +30,32 @@ The default crypto provider is based on [AES](http://en.wikipedia.org/wiki/Advan
 - Some documentation about the keys
 - RSA Encryption provider
 - Full HSM provider support 
+
+## How-To
+
+To run get the project...
+
+```
+go get github.com/Inflatablewoman/go-kms
+```
+
+You need to set the following variables:
+
+```
+export GOKMS_AUTH_KEY=/path/to/auth.key
+export GOKMS_CRYPTO_PROVIDER=softhsm | gokms
+export GOKMS_HOST=localhost
+export GOKMS_PORT=8020
+export GOKMS_SSL_CERT=/path/to/ssl_cert.pem
+export GOKMS_SSL_KEY=/path/to/ssl_key.pem
+```
+
+If the Crypto_Provider is set to gokms then you also need to set:
+
+```
+export GOKMS_KSMC_PATH=/path/to/keys/
+export GOKMS_KSMC_PASSPHRASE="a very long Passphrase that will be used for key derivation"
+```
 
 ## Authorization
 
