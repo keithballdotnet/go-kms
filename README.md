@@ -8,9 +8,11 @@ A REST based Key Management Service written in GO.
 
 ## What is GO-KMS?
 
-GO-KMS is a encryption Key Management Service in GO.  Modelled extensively on AWS KMS behaviour, the API is used for symmetrical key management.  It also offers Cryptography as a Service functionality such as encryption/decryption/reencryption without exposing keys.
+GO-KMS is a encryption Key Management Service in GO.  Modelled extensively on AWS KMS behaviour, the API is used for symmetrical key management.  It offers Cryptography as a Service (CaaS) functionality such as encryption/decryption/reencryption without exposing keys.
 
-The default crypto provider is based on [AES](http://en.wikipedia.org/wiki/Advanced_Encryption_Standard) and a key size of 256bits using the [GCM cipher](http://en.wikipedia.org/wiki/Galois/Counter_Mode) to provide confidentiality as well as authentication.  Keys are encrypted and stored on disk, using a master key which is derived using [PBKDF2](http://en.wikipedia.org/wiki/PBKDF2) from a passphrase.
+The crypto provider is based on [AES](http://en.wikipedia.org/wiki/Advanced_Encryption_Standard) and a key size of 256bits using the [GCM cipher](http://en.wikipedia.org/wiki/Galois/Counter_Mode) to provide confidentiality as well as authentication.  
+
+Keys are encrypted and stored on disk, using a master key which is derived using [PBKDF2](http://en.wikipedia.org/wiki/PBKDF2) from a passphrase when run in pure software mode.  It is also possible to combine GO-KMS with a [Hardware Security Module (HSM)](http://en.wikipedia.org/wiki/Hardware_security_module) which can be leveraged to create and encrypt a master key using the HSM for generation and protection.  HSM support is done using the [PKCS#11](http://en.wikipedia.org/wiki/PKCS_11) standard.
 
 GO-KMS authentication is done using [HMAC-SHA256](http://en.wikipedia.org/wiki/Hash-based_message_authentication_code) over HTTPS.  
 
@@ -48,18 +50,29 @@ You need to set the following variables:
 
 ```
 export GOKMS_AUTH_KEY=/path/to/auth.key
-export GOKMS_CRYPTO_PROVIDER=softhsm | gokms
+export GOKMS_CRYPTO_PROVIDER= hsm | gokms
 export GOKMS_HOST=localhost
 export GOKMS_PORT=8020
 export GOKMS_SSL_CERT=/path/to/ssl_cert.pem
 export GOKMS_SSL_KEY=/path/to/ssl_key.pem
 ```
 
-If the Crypto_Provider is set to gokms then you also need to set:
+If the GOKMS_CRYPTO_PROVIDER is set to *"gokms"* then you also need to set:
 
 ```
 export GOKMS_KSMC_PATH=/path/to/keys/
 export GOKMS_KSMC_PASSPHRASE="a very long Passphrase that will be used for key derivation"
+```
+
+If the GOKMS_CRYPTO_PROVIDER is set to *"hsm"* then you also need to set:
+
+```
+export GOKMS_HSM_LIB=/path/to/your/hsm/lib.so
+export GOKMS_HSM_SLOT="0"
+export GOKMS_HSM_AES_KEYID="TheNameOfTheCryptoKey"
+
+# optional: If not set no pkcs11 login will be performed.  Useful for Tokens with no PIN set.
+export GOKMS_HSM_SLOT_PIN="1234"
 ```
 
 ## Authorization
