@@ -59,6 +59,31 @@ func SetAuth(request *http.Request, method string, resource string) *http.Reques
 	return request
 }
 
+func (s *KMSSuite) TestHSMMasterKeyProvider(c *C) {
+
+	c.Skip("HSM must be set up for this test to work")
+
+	os.Setenv("GOKMS_HSM_LIB", "/opt/nfast/toolkits/pkcs11/libcknfast.so")
+	os.Setenv("GOKMS_HSM_SLOT", "0")
+	os.Setenv("GOKMS_HSM_AES_KEYID", "My New AES Key")
+	os.Setenv("GOKMS_KSMC_PATH", "/home/keithball/Documents/tokens")
+	Config["GOKMS_KSMC_PATH"] = "/home/keithball/Documents/tokens"
+	// Ensure we actually match the interface
+	var mkp MasterKeyProvider
+	mkp, err := NewHSMMasterKeyProvider()
+
+	// Get key
+	key, err := mkp.GetKey()
+
+	// No error
+	c.Assert(err == nil, IsTrue, Commentf("Got error: %v", err))
+
+	// Ensure key is 32 bytes
+	c.Assert(len(key) == 32, IsTrue)
+
+	fmt.Printf("Key is: %v %v", key, string(key))
+}
+
 func (s *KMSSuite) TestAuthenticationKeyCreation(c *C) {
 	Config["GOKMS_AUTH_KEY"] = c.MkDir() + "auth.key"
 
@@ -368,7 +393,7 @@ func (s *KMSSuite) TestHMSEncryptDecrypt(c *C) {
 
 	c.Skip("No HSM test")
 
-	data := GenerateAesSecret()
+	data := KmsCrypto.GenerateAesKey()
 
 	fmt.Printf("Encrypt data: %v len: %v ", string(data), len(data))
 
@@ -410,7 +435,7 @@ func (s *KMSSuite) TestAesGCMCrypto(c *C) {
 
 	fmt.Println("GCM bytes to encrypt: " + string(bytesToEncrypt))
 
-	aesKey := GenerateAesSecret()
+	aesKey := KmsCrypto.GenerateAesKey()
 
 	encryptedBytes, err := AesGCMEncrypt(bytesToEncrypt, aesKey)
 
@@ -435,92 +460,6 @@ func (s *KMSSuite) TestAesGCMCrypto(c *C) {
 	fmt.Println("GCM Unencrypted bytes: " + string(unencryptedBytes))
 
 	c.Assert(bytes.Equal(bytesToEncrypt, unencryptedBytes), IsTrue)
-}
-
-func (s *KMSSuite) TestAesCFBCrypto(c *C) {
-
-	encryptString := "a very very very very secret pot"
-
-	bytesToEncrypt := []byte(encryptString)
-
-	fmt.Println("bytes to encrypt: " + string(bytesToEncrypt))
-
-	aesKey := GenerateAesSecret()
-
-	encryptedBytes, err := AesCFBEncrypt(bytesToEncrypt, aesKey)
-
-	if err != nil {
-		fmt.Println("Got error: " + err.Error())
-	}
-
-	// No error
-	c.Assert(err == nil, IsTrue)
-
-	fmt.Println("encrypted bytes: " + string(encryptedBytes))
-
-	unencryptedBytes, err := AesCFBDecrypt(encryptedBytes, aesKey)
-
-	if err != nil {
-		fmt.Println("Got error: " + err.Error())
-	}
-
-	// No error
-	c.Assert(err == nil, IsTrue)
-
-	fmt.Println("Unencrypted bytes: " + string(unencryptedBytes))
-
-	c.Assert(bytes.Equal(bytesToEncrypt, unencryptedBytes), IsTrue)
-}
-
-func (s *KMSSuite) TestRsaCrypto(c *C) {
-
-	encryptString := "a very very very very secret pot"
-
-	bytesToEncrypt := []byte(encryptString)
-
-	fmt.Println("bytes to encrypt: " + string(bytesToEncrypt))
-
-	encryptedBytes, err := RsaEncrypt(bytesToEncrypt)
-
-	if err != nil {
-		fmt.Println("Got error: " + err.Error())
-	}
-
-	// No error
-	c.Assert(err == nil, IsTrue)
-
-	fmt.Println("encrypted bytes: " + string(encryptedBytes))
-
-	unencryptedBytes, err := RsaDecrypt(encryptedBytes)
-
-	if err != nil {
-		fmt.Println("Got error: " + err.Error())
-	}
-
-	// No error
-	c.Assert(err == nil, IsTrue)
-
-	fmt.Println("Unencrypted bytes: " + string(unencryptedBytes))
-
-	c.Assert(bytes.Equal(bytesToEncrypt, unencryptedBytes), IsTrue)
-}
-
-func (s *KMSSuite) TestGenerateKey(c *C) {
-
-	c.Skip("Not interesting")
-
-	GenerateRsaKey()
-
-	c.Assert(RsaEncryptionChipher.PublicKeyPath == CertifcatePath, IsTrue)
-	c.Assert(RsaEncryptionChipher.PrivateKeyPath == KeyPath, IsTrue)
-
-	certInfo, err := os.Stat(CertifcatePath)
-	c.Assert(err == nil, IsTrue)
-	c.Assert(certInfo.Size() > 0, IsTrue)
-
-	keyInfo, err := os.Stat(KeyPath)
-	c.Assert(err == nil, IsTrue)
-	c.Assert(keyInfo.Size() > 0, IsTrue)
 }
 
 func (s *KMSSuite) TestHMACKey(c *C) {

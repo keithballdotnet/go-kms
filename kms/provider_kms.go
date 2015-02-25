@@ -2,9 +2,11 @@ package kms
 
 import (
 	"code.google.com/p/go-uuid/uuid"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"strings"
 	"time"
@@ -19,7 +21,7 @@ var encryptedKeyLength = 64
 
 // KMSCryptoProvider is an implementation of encryption using a local storage
 type KMSCryptoProvider struct {
-	userkey []byte
+	MasterKey []byte
 }
 
 // NewKMSCryptoProvider
@@ -38,15 +40,23 @@ func NewKMSCryptoProvider() (KMSCryptoProvider, error) {
 		Exit(fmt.Sprintf("Can't use directory %s: %v", Config["GOKMS_KSMC_PATH"], err), 2)
 	}
 
-	// Derive key from pass phrase
-	if len(Config["GOKMS_KSMC_PASSPHRASE"]) < 10 {
-		Exit(fmt.Sprintf("The pass phrase must be at least 10 characters long is only %v characters", len(Config["GOKMS_KSMC_PASSPHRASE"])), 2)
+	var mkp MasterKeyProvider
+	switch Config["GOKMS_CRYPTO_PROVIDER"] {
+	case "gokms":
+		mkp, err = NewGoKMSMasterKeyProvider()
+	case "hsm":
+		// Create crypto provider
+		mkp, err = NewHSMMasterKeyProvider()
+	default:
+		mkp, err = NewGoKMSMasterKeyProvider()
 	}
 
-	// Derive master key from given pass phrase
-	userKey := DeriveAESKey(Config["GOKMS_KSMC_PASSPHRASE"], []byte{})
+	key, err := mkp.GetKey()
+	if err != nil {
+		Exit(fmt.Sprintf("Can't get master key %s", err), 2)
+	}
 
-	return KMSCryptoProvider{userkey: userKey}, nil
+	return KMSCryptoProvider{MasterKey: key}, nil
 }
 
 // SetKMSCryptoConfig will check any required settings for this crypto-provider
@@ -54,8 +64,7 @@ func SetKMSCryptoConfig() {
 	envFiles := []string{}
 
 	providerConfig := map[string]string{
-		"GOKMS_KSMC_PATH":       filepath.Join(os.TempDir(), "go-kms", "keys"),
-		"GOKMS_KSMC_PASSPHRASE": "",
+		"GOKMS_KSMC_PATH": filepath.Join(os.TempDir(), "go-kms", "keys"),
 	}
 
 	// Load all Environments variables
@@ -160,7 +169,7 @@ func (cp KMSCryptoProvider) CreateKey(description string) (KeyMetadata, error) {
 	}
 
 	// Create a new secret key
-	aesKey := GenerateAesSecret()
+	aesKey := cp.GenerateAesKey()
 
 	// Create new key object
 	key := Key{KeyMetadata: keyMetadata, AESKey: aesKey}
@@ -186,7 +195,7 @@ func (cp KMSCryptoProvider) SaveKey(key Key) error {
 	keyPath := filepath.Join(Config["GOKMS_KSMC_PATH"], key.KeyMetadata.KeyID+".key")
 
 	// Encrypt the key data with the user key and perist to disk..
-	encryptedKey, err := AesGCMEncrypt(keyData, cp.userkey)
+	encryptedKey, err := AesGCMEncrypt(keyData, cp.MasterKey)
 	if err != nil {
 		return err
 	}
@@ -214,7 +223,7 @@ func (cp KMSCryptoProvider) GetKey(KeyID string) (Key, error) {
 	}
 
 	// decrypt the data on disk with the users derived key
-	decryptedData, err := AesGCMDecrypt(encryptedKey, cp.userkey)
+	decryptedData, err := AesGCMDecrypt(encryptedKey, cp.MasterKey)
 	if err != nil {
 		log.Printf("GetKey() failed %s\n", err)
 		return Key{}, err
@@ -268,7 +277,7 @@ func (cp KMSCryptoProvider) Encrypt(data []byte, KeyID string) ([]byte, error) {
 	}
 
 	// Encrypt the key ID used with the master key, so we can ID the key later on
-	encryptedKey, err := AesGCMEncrypt([]byte(key.KeyMetadata.KeyID), cp.userkey)
+	encryptedKey, err := AesGCMEncrypt([]byte(key.KeyMetadata.KeyID), cp.MasterKey)
 	if err != nil {
 		return nil, err
 	}
@@ -285,7 +294,7 @@ func (cp KMSCryptoProvider) Decrypt(data []byte) ([]byte, string, error) {
 	encryptedData := data[encryptedKeyLength:]
 
 	// Decrypt the key ID used in the encryption
-	keyID, err := AesGCMDecrypt(encryptedKey, cp.userkey)
+	keyID, err := AesGCMDecrypt(encryptedKey, cp.MasterKey)
 	if err != nil {
 		return nil, "", err
 	}
@@ -309,4 +318,11 @@ func (cp KMSCryptoProvider) Decrypt(data []byte) ([]byte, string, error) {
 	}
 
 	return decryptedData, string(keyID), nil
+}
+
+// Create a new Aes Secret
+func (cp KMSCryptoProvider) GenerateAesKey() []byte {
+	key := make([]byte, 32)
+	io.ReadFull(rand.Reader, key)
+	return key
 }

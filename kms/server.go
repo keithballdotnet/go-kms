@@ -316,7 +316,7 @@ func generateDataKeyHandler(u *url.URL, h http.Header, dataKeyRequest *GenerateD
 	}
 
 	// Create a new key
-	aesKey := GenerateAesSecret()
+	aesKey := KmsCrypto.GenerateAesKey()
 
 	// Encrypt the key with the master key
 	encryptedData, err := KmsCrypto.Encrypt(aesKey, dataKeyRequest.KeyID)

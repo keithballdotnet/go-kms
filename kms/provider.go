@@ -28,4 +28,10 @@ type CryptoProvider interface {
 	Encrypt(data []byte, KeyID string) ([]byte, error)
 	Decrypt(data []byte) ([]byte, string, error)
 	ReEncrypt(data []byte, KeyID string) ([]byte, string, error)
+	GenerateAesKey() []byte
+}
+
+// MasterKeyProvider provides a mechanism to load a master key
+type MasterKeyProvider interface {
+	GetKey() ([]byte, error)
 }

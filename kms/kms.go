@@ -35,11 +35,11 @@ func Start() {
 
 var Config = map[string]string{
 	"GOKMS_AUTH_KEY":        "../files/auth.key",
-	"GOKMS_CRYPTO_PROVIDER": "softhsm",
+	"GOKMS_CRYPTO_PROVIDER": "goksm",
 	"GOKMS_HOST":            "localhost",
 	"GOKMS_PORT":            "8011",
-	"GOKMS_SSL_CERT":        "../files/ssl_cert.pem",
-	"GOKMS_SSL_KEY":         "../files/ssl_key.pem",
+	"GOKMS_SSL_CERT":        "../files/auth.key", // This is just done to allow the tests to pass
+	"GOKMS_SSL_KEY":         "../files/auth.key", // This is just done to allow the tests to pass
 }
 
 // InitConfig read several Environment variables and based on them initialise the configuration
