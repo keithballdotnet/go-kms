@@ -4,7 +4,7 @@ A REST based Key Management Service written in GO.
 
 [![GoDoc](https://godoc.org/github.com/keithballdotnet/go-kms?status.svg)](https://godoc.org/github.com/keithballdotnet/go-kms)
 [![Build Status](https://travis-ci.org/keithballdotnet/go-kms.svg)](https://travis-ci.org/keithballdotnet/go-kms)
-[![Coverage Status](https://coveralls.io/repos/keithballdotnet/go-kms/badge.svg?branch=master)](https://coveralls.io/r/keithballdotnet/go-kms?branch=master)
+<!-- [![Coverage Status](https://coveralls.io/repos/keithballdotnet/go-kms/badge.svg?branch=master)](https://coveralls.io/r/keithballdotnet/go-kms?branch=master) -->
 
 ## What is GO-KMS?
 
