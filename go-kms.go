@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/Inflatablewoman/go-kms/kms"
+	"github.com/keithballdotnet/go-kms/kms"
 	"log"
 	"os"
 )

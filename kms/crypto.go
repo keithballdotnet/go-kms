@@ -1,7 +1,6 @@
 package kms
 
 import (
-	"code.google.com/p/go.crypto/pbkdf2"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/hmac"
@@ -13,6 +12,8 @@ import (
 	"encoding/binary"
 	"errors"
 	mathrand "math/rand"
+
+	"golang.org/x/crypto/pbkdf2"
 )
 
 // AesGCMEncrypt Encrypt data using AES with the GCM cipher mode (Gives Confidentiality and Authenticity)

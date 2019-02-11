@@ -1,7 +1,6 @@
 package kms
 
 import (
-	"code.google.com/p/go-uuid/uuid"
 	"crypto/rand"
 	"encoding/json"
 	"errors"
@@ -10,6 +9,9 @@ import (
 	"io/ioutil"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
+
 	// "io/ioutil"
 	"log"
 	"os"
@@ -158,7 +160,7 @@ func (cp KMSCryptoProvider) ListKeys() ([]KeyMetadata, error) {
 func (cp KMSCryptoProvider) CreateKey(description string) (KeyMetadata, error) {
 
 	// Create a new key id
-	keyID := uuid.New()
+	keyID := uuid.New().String()
 
 	// Create metadata
 	keyMetadata := KeyMetadata{

@@ -3,11 +3,12 @@ package kms
 import (
 	"crypto/aes"
 	"fmt"
-	"github.com/miekg/pkcs11"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
+
+	"github.com/miekg/pkcs11"
 )
 
 // HSMMasterKeyProvider is an implementation of aquiring a MASTER key using a connection to a Hardware Security Module

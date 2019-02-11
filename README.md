@@ -2,9 +2,9 @@
 
 A REST based Key Management Service written in GO.
 
-[![GoDoc](https://godoc.org/github.com/Inflatablewoman/go-kms?status.svg)](https://godoc.org/github.com/Inflatablewoman/go-kms)
-[![Build Status](https://travis-ci.org/Inflatablewoman/go-kms.svg)](https://travis-ci.org/Inflatablewoman/go-kms)
-[![Coverage Status](https://coveralls.io/repos/Inflatablewoman/go-kms/badge.svg?branch=master)](https://coveralls.io/r/Inflatablewoman/go-kms?branch=master)
+[![GoDoc](https://godoc.org/github.com/keithballdotnet/go-kms?status.svg)](https://godoc.org/github.com/keithballdotnet/go-kms)
+[![Build Status](https://travis-ci.org/keithballdotnet/go-kms.svg)](https://travis-ci.org/keithballdotnet/go-kms)
+[![Coverage Status](https://coveralls.io/repos/keithballdotnet/go-kms/badge.svg?branch=master)](https://coveralls.io/r/keithballdotnet/go-kms?branch=master)
 
 ## What is GO-KMS?
 
@@ -18,7 +18,7 @@ GO-KMS authentication is done using [HMAC-SHA256](http://en.wikipedia.org/wiki/H
 
 ### GO-KMS - Command Line Interface
 
-GO-KMS-CLI is a command line interface which can be used to manage and interact with go-kms.  The project can be found here: [https://github.com/Inflatablewoman/go-kms-cli](https://github.com/Inflatablewoman/go-kms-cli)
+GO-KMS-CLI is a command line interface which can be used to manage and interact with go-kms.  The project can be found here: [https://github.com/keithballdotnet/go-kms-cli](https://github.com/keithballdotnet/go-kms-cli)
 
 ## Features
 
@@ -43,7 +43,13 @@ GO-KMS-CLI is a command line interface which can be used to manage and interact 
 To run get the project...
 
 ```
-go get github.com/Inflatablewoman/go-kms
+go get github.com/keithballdotnet/go-kms
+```
+
+The dependencies are in the vendor folder already, but should you want to you can run ...
+
+```
+dep ensure
 ```
 
 You need to set the following variables:

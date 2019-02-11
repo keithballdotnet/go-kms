@@ -3,7 +3,7 @@ package kms
 import (
 	"bytes"
 	"fmt"
-	. "github.com/Inflatablewoman/go-kms/gocheck2"
+	. "github.com/keithballdotnet/go-kms/gocheck2"
 	. "gopkg.in/check.v1"
 	"net/http"
 	"net/url"
